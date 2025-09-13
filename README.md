@@ -224,7 +224,7 @@ chmod +x scripts/build-multi.sh
 
 #### Minimal (quick start)
 ```yaml
-version: "3.9"
+name: stubforge
 services:
   stubforge:
     image: aranga/stubforge-mobile:latest
@@ -235,10 +235,10 @@ services:
 
 #### With Persistent Data & Config
 ```yaml
-version: "3.9"
+name: stubforge
 services:
   stubforge:
-  image: aranga/stubforge-mobile:1.3.2
+    image: aranga/stubforge-mobile:1.3.2
     container_name: stubforge-mobile
     restart: unless-stopped
     environment:
@@ -281,6 +281,14 @@ docker compose down -v
 ```
 
 > Tip: Pin to a specific version (e.g., `1.3.2`) in CI; use `latest` locally for convenience.
+
+#### Project Naming
+Compose uses the parent directory name as the project prefix (e.g., `test-stubforge-1`). You can set a top-level `name:` in your compose file (shown above) to control this directly. Other options:
+```bash
+docker compose -p stubforge up -d
+# or
+COMPOSE_PROJECT_NAME=stubforge docker compose up -d
+```
 
 ## 📚 Technical Details
 

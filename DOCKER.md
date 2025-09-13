@@ -54,10 +54,10 @@ docker run -p 3000:3000 \
 Create a `docker-compose.yml`:
 
 ```yaml
-version: '3.8'
+name: stubforge
 services:
   stubforge:
-  image: aranga/stubforge-mobile:latest
+    image: aranga/stubforge-mobile:latest
     ports:
       - "3000:3000"
     volumes:
@@ -72,6 +72,22 @@ Run with:
 ```bash
 docker-compose up -d
 ```
+
+### Project / Container Naming
+Docker Compose derives a project name (used as container name prefix) from the directory holding the compose file. If your folder is named `test`, containers may appear as `test-stubforge-1`.
+
+Preferred (Compose v2) approach: define a top-level `name:` in your `docker-compose.yml` (as shown above) to set this explicitly.
+
+Other ways to control it:
+```bash
+# Supply a project name flag
+docker compose -p stubforge up -d
+
+# Or set environment variable
+COMPOSE_PROJECT_NAME=stubforge docker compose up -d
+```
+
+Using any of these avoids unexpected names and creates predictable resources (networks, volumes, containers).
 
 ## Volume Behavior
 
