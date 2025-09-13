@@ -2,6 +2,29 @@
 
 All notable changes to **StubForge Mobile** will be documented in this file.
 
+## [1.3.0-docker.1] - 2025-09-13 - Docker Hub Ready (Feature Branch)
+### Added - Docker Volume Support & Hub Deployment
+- **Docker Volume Support** - External mounting for custom stubs and keys without rebuilding images
+- **Smart Default Handling** - Built-in samples automatically used when no custom files provided
+- **Production-Ready Keys** - Secure RSA key management with custom key support
+- **Docker Hub Deployment** - Complete build and push instructions for public registry
+- **Comprehensive Docker Guide** - Detailed DOCKER.md with usage examples and troubleshooting
+- **Build Optimization** - .dockerignore and efficient Docker layer caching
+- **Flexible Configuration** - Support for custom config mounting via volumes
+- **Multi-scenario Support** - Works with empty volumes, partial customization, or full custom setup
+
+### Enhanced
+- **Docker Entrypoint** - Intelligent stub and key initialization with fallback strategies
+- **Volume Management** - Proper handling of mounted directories and file permissions
+- **Container Security** - Production deployment considerations and secure key generation
+- **Developer Experience** - Quick start options and Docker Compose examples
+
+### Technical
+- **Volume Declarations** - Explicit `/app/stubs` and `/app/keys` volume definitions
+- **Default Preservation** - Built-in assets stored as `stubs-default/` and `keys-default/`
+- **Entrypoint Logic** - Robust file detection and copying mechanisms
+- **Multi-platform Ready** - Support for ARM64 and AMD64 architectures
+
 ## [1.2.0] - 2025-09-13 - StubForge Mobile Complete
 ### Added - Complete OAuth2 & OpenID Connect Support
 - **Project Rebranding** - Complete transformation to "StubForge Mobile" with mobile-first messaging
