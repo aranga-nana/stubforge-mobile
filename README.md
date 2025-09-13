@@ -15,6 +15,11 @@ Key features:
 - Docker image & rule validation script
 - Minimal dependencies; fast startup
 
+## Demo (GIF)
+> Placeholder: Add `docs/media/pkce-flow.gif` showing Postman auto PKCE (Steps 1-3). To record: use screen capture, optimize with `gifski` or `ffmpeg` + `imagemagick`, then commit under `docs/media/` and update path below.
+
+![PKCE Flow Demo](docs/media/pkce-flow.gif)
+
 ## Why
 Standing up a full identity provider + backend just to iterate on mobile auth UX is slow. This project gives you:
 - Realistic OAuth2 Authorization Code + PKCE exchange (S256)
@@ -201,6 +206,12 @@ Mount keys to persist / reuse:
 ```
 docker run --rm -p 3000:3000 -v $PWD/keys:/app/keys oauth2-stubkit-mobile
 ```
+Generate & inspect a token quickly:
+```
+TOKEN=$(curl -s -X POST http://localhost:3000/oauth/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=client_credentials&client_id=svc&scope=basic' | jq -r .access_token)
+printf '%s\n' "$TOKEN" | cut -d'.' -f2 | base64 -D 2>/dev/null | jq
+```
+(Use `base64 -d` on Linux.)
 
 ## Validate Rules
 ```
