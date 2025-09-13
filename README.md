@@ -1,6 +1,6 @@
 # oauth2-stubkit-mobile
 
-![PKCE Mobile Ready](https://img.shields.io/badge/Mobile%20OAuth2-PKCE%20Ready-brightgreen?style=for-the-badge) ![JWT](https://img.shields.io/badge/Tokens-JWT%20RS256-blue?style=for-the-badge) ![Stubs](https://img.shields.io/badge/Config-Stub%20Rules-lightgrey?style=for-the-badge)
+![PKCE Mobile Ready](https://img.shields.io/badge/Mobile%20OAuth2-PKCE%20Ready-brightgreen?style=for-the-badge) ![JWT](https://img.shields.io/badge/Tokens-JWT%20RS256-blue?style=for-the-badge) ![Stubs](https://img.shields.io/badge/Config-Stub%20Rules-lightgrey?style=for-the-badge) ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-green?style=for-the-badge) ![Release](https://img.shields.io/github/v/tag/aranga-nana/oauth2-stubkit-mobile?label=release&style=for-the-badge)
 
 Spin up a local, config-driven OAuth2 Authorization Code (PKCE) + JWT stub API in under 60 seconds for rapid iOS & Android mobile app development. NOT for production; purpose-built for local dev, integration testing, and iterative UI flows.
 
@@ -12,18 +12,83 @@ Key features:
 - Hot reload of rules (set `WATCH_RULES=1`)
 - Postman collection automates full PKCE flow (auto-captures auth code, integrity checks)
 - Safe key handling (git-ignored PEMs; instructions included)
+- Docker image & rule validation script
 - Minimal dependencies; fast startup
 
-## Mobile OAuth2 Stub Server (PKCE) for iOS / Android App Development
+## Why
+Standing up a full identity provider + backend just to iterate on mobile auth UX is slow. This project gives you:
+- Realistic OAuth2 Authorization Code + PKCE exchange (S256)
+- Signed JWTs you can decode & validate in app (public key / JWKS provided)
+- Dynamic mock API responses selected by rules (query/body driven) for rapid state simulation
+- Simple folder-based rules you can version with your app
+- No external services required; works fully offline
 
-Purpose: Fast local HTTP stub + OAuth2 (Authorization Code + PKCE, password, client_credentials, refresh) with signed JWTs.
-
-## Run
+## Quick Start
 ```
+# Install & run
 npm install
 npm run dev
+# or with Docker (auto key gen if absent)
+docker build -t oauth2-stubkit-mobile .
+docker run --rm -p 3000:3000 -v "$PWD/keys:/app/keys" oauth2-stubkit-mobile
 ```
 Server: http://localhost:3000
+Health: http://localhost:3000/health
+JWKS: http://localhost:3000/.well-known/jwks.json
+
+## iOS Swift (Authorization Code Exchange Example)
+```swift
+let base = URL(string: "http://localhost:3000")!
+let codeVerifier = "<your generated verifier>"
+let codeChallenge = /* BASE64URL(SHA256(verifier)) */
+let authorize = URL(string: "/oauth/authorize?response_type=code&client_id=mobile-app&redirect_uri=http://localhost:3000/callback&scope=openid%20profile&state=abc123&code_challenge=\(codeChallenge)&code_challenge_method=S256", relativeTo: base)!
+URLSession.shared.dataTask(with: authorize) { _, resp, _ in
+    if let http = resp as? HTTPURLResponse, let loc = http.value(forHTTPHeaderField: "Location") {
+        let code = URLComponents(string: loc)?.queryItems?.first { $0.name == "code" }?.value ?? ""
+        var req = URLRequest(url: base.appendingPathComponent("/oauth/token"))
+        req.httpMethod = "POST"
+        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        let body = "grant_type=authorization_code&code=\(code)&redirect_uri=http://localhost:3000/callback&code_verifier=\(codeVerifier)&client_id=mobile-app"
+        req.httpBody = body.data(using: .utf8)
+        URLSession.shared.dataTask(with: req) { data, _, _ in
+            if let d = data { print(String(data: d, encoding: .utf8)!) }
+        }.resume()
+    }
+}.resume()
+```
+
+## Android Kotlin (OkHttp)
+```kotlin
+val client = OkHttpClient()
+val base = "http://10.0.2.2:3000" // Android emulator -> host
+val verifier = "<generated>"
+val challenge = /* base64url(sha256(verifier)) */
+val authUrl = HttpUrl.parse("$base/oauth/authorize")!!.newBuilder()
+    .addQueryParameter("response_type","code")
+    .addQueryParameter("client_id","mobile-app")
+    .addQueryParameter("redirect_uri","http://localhost:3000/callback")
+    .addQueryParameter("scope","openid profile")
+    .addQueryParameter("state","abc123")
+    .addQueryParameter("code_challenge", challenge)
+    .addQueryParameter("code_challenge_method","S256")
+    .build()
+val authReq = Request.Builder().url(authUrl).build()
+client.newCall(authReq).execute().use { resp ->
+    val location = resp.header("Location") ?: return@use
+    val code = HttpUrl.parse(location)!!.queryParameter("code") ?: return@use
+    val form = FormBody.Builder()
+        .add("grant_type","authorization_code")
+        .add("code", code)
+        .add("redirect_uri","http://localhost:3000/callback")
+        .add("code_verifier", verifier)
+        .add("client_id","mobile-app")
+        .build()
+    val tokenReq = Request.Builder().url("$base/oauth/token").post(form).build()
+    client.newCall(tokenReq).execute().use { tokenResp ->
+        println(tokenResp.body()!!.string())
+    }
+}
+```
 
 ## OAuth2 PKCE Flow (S256)
 1. Generate `code_verifier` (43–128 chars allowed: A-Z a-z 0-9 -._~).
@@ -126,3 +191,34 @@ curl -X POST http://localhost:3000/orders -H 'Content-Type: application/json' -d
 Edit `config/local.json` for port, CORS, global delay, fallback.
 
 That's it. Keep only what you need.
+
+## Docker
+```
+docker build -t oauth2-stubkit-mobile .
+docker run --rm -p 3000:3000 oauth2-stubkit-mobile
+```
+Mount keys to persist / reuse:
+```
+docker run --rm -p 3000:3000 -v $PWD/keys:/app/keys oauth2-stubkit-mobile
+```
+
+## Validate Rules
+```
+npm run validate:rules
+```
+Ensures every `rule*.json` has id, match + response.file exists.
+
+## Contributing
+See `CONTRIBUTING.md` & `CODE_OF_CONDUCT.md`. PRs welcome.
+
+## Roadmap
+- Optional JWT auth middleware for protected stubs
+- Auth code expiry & cleanup job
+- Advanced templating helpers
+- OpenAPI generation from rules
+
+## Star & Share
+If this saved you time, please ⭐ the repo & share.
+
+## License
+MIT

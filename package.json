@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "validate:rules": "node scripts/validate-rules.js"
   },
   "keywords": [
     "stub-server",
@@ -14,7 +15,13 @@
     "api",
     "configurable",
     "oauth2",
-    "jwt"
+    "jwt",
+    "pkce",
+    "mobile",
+    "ios",
+    "android",
+    "testing",
+    "developer-tools"
   ],
   "license": "MIT",
   "dependencies": {
@@ -26,5 +33,12 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aranga-nana/oauth2-stubkit-mobile.git"
+  },
+  "bugs": { "url": "https://github.com/aranga-nana/oauth2-stubkit-mobile/issues" },
+  "homepage": "https://github.com/aranga-nana/oauth2-stubkit-mobile#readme",
+  "engines": { "node": ">=18" }
 }
