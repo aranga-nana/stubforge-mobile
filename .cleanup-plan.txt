@@ -1,0 +1,8 @@
+Removed legacy / redundant assets:
+- postman/StubServer-OAuth2-PKCE.postman_collection.json (replaced by OAuth2-StubKit-Mobile-PKCE.postman_collection.json)
+- postman/StubServer-Local.postman_environment.json (replaced by OAuth2-StubKit-Mobile-Local.postman_environment.json)
+- Pruned .env.example to only real variables
+
+Pending (optional):
+- Remove unused feature flags from README if referenced
+- Add CI workflow
