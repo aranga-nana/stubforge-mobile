@@ -28,6 +28,12 @@
 - **Learning OAuth2** - Hands-on experience with real flows and tokens
 - **Conference Demos** - Reliable offline demo environment
 
+## 📋 Requirements
+
+- **Node.js** 18+ (LTS recommended)
+- **Express.js** 4.18+ (automatically installed)
+- **OpenSSL** (for JWT key generation)
+
 ## ⚡ Quick Start (60 seconds)
 
 ```bash
@@ -46,6 +52,16 @@ npm run dev
 ```
 
 **That's it!** Your mobile development server is running at http://localhost:3000
+
+### 🛠️ Core Dependencies
+
+StubForge Mobile is built on these reliable technologies:
+
+- **Express.js** - Fast, unopinionated web framework for Node.js
+- **jsonwebtoken** - JWT token creation and validation
+- **path-to-regexp** - Flexible URL pattern matching
+- **cors** - Cross-Origin Resource Sharing support
+- **dotenv** - Environment variable management
 
 ## 📱 Mobile Integration Examples
 
