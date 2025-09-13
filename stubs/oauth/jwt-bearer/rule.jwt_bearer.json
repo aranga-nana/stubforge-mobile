@@ -1,0 +1,10 @@
+{
+  "id": "oauth-jwt-bearer",
+  "match": { 
+    "method": "POST", 
+    "path": "/oauth/token", 
+    "bodyContains": ["grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"], 
+    "query": {} 
+  },
+  "response": { "file": "response.jwt_bearer.json", "delayMs": 0 }
+}

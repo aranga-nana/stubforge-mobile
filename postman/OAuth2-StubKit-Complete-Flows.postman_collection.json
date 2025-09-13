@@ -1,0 +1,771 @@
+{
+	"info": {
+		"_postman_id": "oauth2-stubkit-complete",
+		"name": "OAuth2-StubKit-Complete-Flows",
+		"description": "Complete OAuth2 & OpenID Connect flow testing for stub server with all supported flows organized by type.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🏠 Setup & Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "OpenID Connect Discovery",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/.well-known/openid_configuration",
+							"host": ["{{base_url}}"],
+							"path": [".well-known", "openid_configuration"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "JWKS (Public Keys)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/.well-known/jwks.json",
+							"host": ["{{base_url}}"],
+							"path": [".well-known", "jwks.json"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔐 Authorization Code Flow (PKCE)",
+			"item": [
+				{
+					"name": "Reset PKCE Variables",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Clear all PKCE related variables",
+									"['auth_code','code_verifier','code_challenge','access_token','refresh_token','state','returned_state'].forEach(k=>pm.environment.unset(k));",
+									"console.log('PKCE variables cleared');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 1 - Generate PKCE Challenge",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate PKCE verifier and challenge",
+									"function base64url(b64){return b64.replace(/=+/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');}",
+									"function sha256b64url(str){ const wa = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(str)); return base64url(CryptoJS.enc.Base64.stringify(wa)); }",
+									"function randomVerifier(len){ const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'; let out=''; for(let i=0;i<len;i++){ out+=chars.charAt(Math.floor(Math.random()*chars.length)); } return out; }",
+									"",
+									"const verifier = randomVerifier(64);",
+									"const challenge = sha256b64url(verifier);",
+									"const state = Date.now().toString();",
+									"",
+									"pm.environment.set('code_verifier', verifier);",
+									"pm.environment.set('code_challenge', challenge);",
+									"pm.environment.set('state', state);",
+									"pm.environment.set('client_id', 'mobile-app');",
+									"pm.environment.set('redirect_uri', 'http://localhost:3000/callback');",
+									"",
+									"console.log('PKCE verifier:', verifier);",
+									"console.log('PKCE challenge:', challenge);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 2 - Authorization Request",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract authorization code from redirect",
+									"const loc = pm.response.headers.get('Location');",
+									"if (loc) {",
+									"  const url = new URL(loc);",
+									"  const code = url.searchParams.get('code');",
+									"  const returnedState = url.searchParams.get('state');",
+									"  ",
+									"  if (code) {",
+									"    pm.environment.set('auth_code', code);",
+									"    console.log('Authorization code captured:', code);",
+									"  }",
+									"  ",
+									"  pm.test('State parameter matches', () => {",
+									"    pm.expect(returnedState).to.equal(pm.environment.get('state'));",
+									"  });",
+									"}"
+								]
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"followRedirects": false
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/oauth/authorize?response_type=code&client_id={{client_id}}&redirect_uri={{redirect_uri}}&scope=openid profile&state={{state}}&code_challenge={{code_challenge}}&code_challenge_method=S256",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "authorize"],
+							"query": [
+								{"key": "response_type", "value": "code"},
+								{"key": "client_id", "value": "{{client_id}}"},
+								{"key": "redirect_uri", "value": "{{redirect_uri}}"},
+								{"key": "scope", "value": "openid profile"},
+								{"key": "state", "value": "{{state}}"},
+								{"key": "code_challenge", "value": "{{code_challenge}}"},
+								{"key": "code_challenge_method", "value": "S256"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 3 - Token Exchange",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  pm.environment.set('access_token', json.access_token);",
+									"  pm.environment.set('refresh_token', json.refresh_token);",
+									"  pm.environment.set('id_token', json.id_token);",
+									"  console.log('Tokens received successfully');",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "grant_type", "value": "authorization_code"},
+								{"key": "code", "value": "{{auth_code}}"},
+								{"key": "redirect_uri", "value": "{{redirect_uri}}"},
+								{"key": "code_verifier", "value": "{{code_verifier}}"},
+								{"key": "client_id", "value": "{{client_id}}"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/oauth/token",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "token"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🌐 Implicit Flow",
+			"item": [
+				{
+					"name": "Implicit Grant Request",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.environment.set('state', Date.now().toString());"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract access token from fragment",
+									"const loc = pm.response.headers.get('Location');",
+									"if (loc && loc.includes('#')) {",
+									"  const fragment = loc.split('#')[1];",
+									"  const params = new URLSearchParams(fragment);",
+									"  const accessToken = params.get('access_token');",
+									"  if (accessToken) {",
+									"    pm.environment.set('implicit_access_token', accessToken);",
+									"    console.log('Implicit access token captured:', accessToken);",
+									"  }",
+									"}"
+								]
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"followRedirects": false
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/oauth/authorize?response_type=token&client_id=web-app&redirect_uri=http://localhost:3000/callback&scope=basic&state={{state}}",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "authorize"],
+							"query": [
+								{"key": "response_type", "value": "token"},
+								{"key": "client_id", "value": "web-app"},
+								{"key": "redirect_uri", "value": "http://localhost:3000/callback"},
+								{"key": "scope", "value": "basic"},
+								{"key": "state", "value": "{{state}}"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔑 Client Credentials Flow",
+			"item": [
+				{
+					"name": "Client Credentials Grant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  pm.environment.set('client_access_token', json.access_token);",
+									"  console.log('Client credentials access token received');",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "grant_type", "value": "client_credentials"},
+								{"key": "client_id", "value": "service-app"},
+								{"key": "client_secret", "value": "service-secret"},
+								{"key": "scope", "value": "service"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/oauth/token",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "token"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👤 Resource Owner Password Flow",
+			"item": [
+				{
+					"name": "Password Grant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  pm.environment.set('password_access_token', json.access_token);",
+									"  pm.environment.set('password_refresh_token', json.refresh_token);",
+									"  console.log('Password flow tokens received');",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "grant_type", "value": "password"},
+								{"key": "username", "value": "testuser"},
+								{"key": "password", "value": "testpass"},
+								{"key": "client_id", "value": "mobile-app"},
+								{"key": "scope", "value": "basic profile"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/oauth/token",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "token"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔄 Refresh Token Flow",
+			"item": [
+				{
+					"name": "Refresh Token Grant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  pm.environment.set('new_access_token', json.access_token);",
+									"  pm.environment.set('new_refresh_token', json.refresh_token);",
+									"  console.log('New tokens received from refresh');",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "grant_type", "value": "refresh_token"},
+								{"key": "refresh_token", "value": "{{refresh_token}}"},
+								{"key": "client_id", "value": "mobile-app"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/oauth/token",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "token"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📱 Device Code Flow",
+			"item": [
+				{
+					"name": "Step 1 - Device Authorization Request",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  pm.environment.set('device_code', json.device_code);",
+									"  pm.environment.set('user_code', json.user_code);",
+									"  pm.environment.set('verification_uri', json.verification_uri);",
+									"  pm.environment.set('verification_uri_complete', json.verification_uri_complete);",
+									"  pm.environment.set('interval', json.interval);",
+									"  ",
+									"  console.log('Device Code:', json.device_code);",
+									"  console.log('User Code:', json.user_code);",
+									"  console.log('Verification URI:', json.verification_uri);",
+									"  console.log('Complete URI:', json.verification_uri_complete);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "client_id", "value": "tv-app"},
+								{"key": "scope", "value": "basic"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/oauth/device_authorization",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "device_authorization"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 2 - Poll for Token (Run after 10 seconds)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  pm.environment.set('device_access_token', json.access_token);",
+									"  pm.environment.set('device_refresh_token', json.refresh_token);",
+									"  console.log('Device flow tokens received successfully!');",
+									"} else if (pm.response.code === 400) {",
+									"  const json = pm.response.json();",
+									"  if (json.error === 'authorization_pending') {",
+									"    console.log('User has not yet approved the device - try again in a few seconds');",
+									"  } else {",
+									"    console.log('Error:', json.error, json.error_description);",
+									"  }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "grant_type", "value": "urn:ietf:params:oauth:grant-type:device_code"},
+								{"key": "device_code", "value": "{{device_code}}"},
+								{"key": "client_id", "value": "tv-app"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/oauth/token",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "token"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔐 JWT Bearer Flow",
+			"item": [
+				{
+					"name": "JWT Bearer Grant",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// For demo purposes, we'll use an existing token as assertion",
+									"// In real scenarios, you'd create a JWT assertion signed with your private key",
+									"const assertion = pm.environment.get('access_token') || 'demo-jwt-assertion';",
+									"pm.environment.set('jwt_assertion', assertion);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const json = pm.response.json();",
+									"  pm.environment.set('jwt_bearer_access_token', json.access_token);",
+									"  console.log('JWT Bearer access token received');",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "grant_type", "value": "urn:ietf:params:oauth:grant-type:jwt-bearer"},
+								{"key": "assertion", "value": "{{jwt_assertion}}"},
+								{"key": "scope", "value": "service"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/oauth/token",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "token"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔍 Token Management",
+			"item": [
+				{
+					"name": "Token Introspection",
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/x-www-form-urlencoded"},
+							{"key": "Authorization", "value": "Basic {{client_credentials}}"}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "token", "value": "{{access_token}}"},
+								{"key": "token_type_hint", "value": "access_token"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/oauth/introspect",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "introspect"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Token Revocation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/x-www-form-urlencoded"},
+							{"key": "Authorization", "value": "Basic {{client_credentials}}"}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{"key": "token", "value": "{{access_token}}"},
+								{"key": "token_type_hint", "value": "access_token"}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/oauth/revoke",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "revoke"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🆔 OpenID Connect",
+			"item": [
+				{
+					"name": "UserInfo Endpoint",
+					"request": {
+						"method": "GET",
+						"header": [
+							{"key": "Authorization", "value": "Bearer {{access_token}}"}
+						],
+						"url": {
+							"raw": "{{base_url}}/oauth/userinfo",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "userinfo"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "OpenID Connect with ID Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract ID token from fragment",
+									"const loc = pm.response.headers.get('Location');",
+									"if (loc && loc.includes('#')) {",
+									"  const fragment = loc.split('#')[1];",
+									"  const params = new URLSearchParams(fragment);",
+									"  const idToken = params.get('id_token');",
+									"  if (idToken) {",
+									"    pm.environment.set('oidc_id_token', idToken);",
+									"    console.log('ID token captured:', idToken);",
+									"  }",
+									"}"
+								]
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"followRedirects": false
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/oauth/authorize?response_type=id_token&client_id=oidc-app&redirect_uri=http://localhost:3000/callback&scope=openid&state={{state}}&nonce=random123",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "authorize"],
+							"query": [
+								{"key": "response_type", "value": "id_token"},
+								{"key": "client_id", "value": "oidc-app"},
+								{"key": "redirect_uri", "value": "http://localhost:3000/callback"},
+								{"key": "scope", "value": "openid"},
+								{"key": "state", "value": "{{state}}"},
+								{"key": "nonce", "value": "random123"}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Hybrid Flow (code + id_token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract both code and ID token from fragment",
+									"const loc = pm.response.headers.get('Location');",
+									"if (loc && loc.includes('#')) {",
+									"  const fragment = loc.split('#')[1];",
+									"  const params = new URLSearchParams(fragment);",
+									"  const code = params.get('code');",
+									"  const idToken = params.get('id_token');",
+									"  if (code) {",
+									"    pm.environment.set('hybrid_auth_code', code);",
+									"    console.log('Hybrid auth code captured:', code);",
+									"  }",
+									"  if (idToken) {",
+									"    pm.environment.set('hybrid_id_token', idToken);",
+									"    console.log('Hybrid ID token captured:', idToken);",
+									"  }",
+									"}"
+								]
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"followRedirects": false
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/oauth/authorize?response_type=code id_token&client_id=hybrid-app&redirect_uri=http://localhost:3000/callback&scope=openid profile&state={{state}}&nonce=random123",
+							"host": ["{{base_url}}"],
+							"path": ["oauth", "authorize"],
+							"query": [
+								{"key": "response_type", "value": "code id_token"},
+								{"key": "client_id", "value": "hybrid-app"},
+								{"key": "redirect_uri", "value": "http://localhost:3000/callback"},
+								{"key": "scope", "value": "openid profile"},
+								{"key": "state", "value": "{{state}}"},
+								{"key": "nonce", "value": "random123"}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🧪 API Testing (Protected Resources)",
+			"item": [
+				{
+					"name": "Get Products (No Auth)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/products",
+							"host": ["{{base_url}}"],
+							"path": ["products"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Products (With Bearer Token)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{"key": "Authorization", "value": "Bearer {{access_token}}"}
+						],
+						"url": {
+							"raw": "{{base_url}}/products",
+							"host": ["{{base_url}}"],
+							"path": ["products"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Order (Protected)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{access_token}}"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\\n  \\\"productId\\\": \\\"p1\\\",\\n  \\\"quantity\\\": 2\\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/orders",
+							"host": ["{{base_url}}"],
+							"path": ["orders"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000"
+		}
+	]
+}

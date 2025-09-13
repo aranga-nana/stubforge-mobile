@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "body": {
+    "device_code": "{{Date.now}}-device",
+    "user_code": "ABCD-1234",
+    "verification_uri": "http://localhost:3000/device",
+    "verification_uri_complete": "http://localhost:3000/device?user_code=ABCD-1234",
+    "expires_in": 1800,
+    "interval": 5
+  }
+}
