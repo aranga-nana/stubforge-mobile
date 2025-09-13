@@ -1,0 +1,46 @@
+{
+  "port": 3000,
+  "logging": true,
+  "globalDelayMs": 0,
+  "allowDefaultClient": false,
+  "cors": {
+    "enabled": true,
+    "origins": ["*"]
+  },
+  "stubsDir": "stubs",
+  "oauth": {
+    "basePath": "/oauth",
+    "authorizePath": "/oauth/authorize",
+    "tokenPath": "/oauth/token",
+    "devicePath": "/oauth/device_authorization",
+    "introspectPath": "/oauth/introspect",
+    "revokePath": "/oauth/revoke",
+    "userinfoPath": "/oauth/userinfo",
+    "jwksPath": "/.well-known/jwks.json",
+    "publicKeyPath": "/.well-known/public.pem",
+    "discoveryPath": "/.well-known/openid_configuration",
+    "deviceVerificationPath": "/device",
+    "deviceVerifyPath": "/device/verify"
+  },
+  "_comments": {
+    "allowDefaultClient": "Set to true to allow fallback to 'default-client' when no authentication is provided. False by default for better testing security.",
+    "oauth": "All OAuth2 endpoint paths are customizable",
+    "examples": {
+      "basePath": "Change to '/auth' for different base path",
+      "authorizePath": "Custom authorization endpoint like '/auth/authorize'",
+      "tokenPath": "Custom token endpoint like '/auth/token'",
+      "devicePath": "Custom device authorization endpoint",
+      "introspectPath": "Custom token introspection endpoint",
+      "revokePath": "Custom token revocation endpoint",
+      "userinfoPath": "Custom OpenID Connect userinfo endpoint",
+      "jwksPath": "Custom JWKS endpoint for public keys",
+      "discoveryPath": "Custom OpenID Connect discovery endpoint",
+      "deviceVerificationPath": "Custom device verification page",
+      "deviceVerifyPath": "Custom device verification form handler"
+    }
+  },
+  "fallback": { 
+    "status": 404, 
+    "json": { "error": "No matching stub rule" } 
+  }
+}

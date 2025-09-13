@@ -1,0 +1,10 @@
+{
+  "id": "oauth-device-code",
+  "match": { 
+    "method": "POST", 
+    "path": "/oauth/token", 
+    "bodyContains": ["grant_type", "urn:ietf:params:oauth:grant-type:device_code"], 
+    "query": {} 
+  },
+  "response": { "file": "response.device_code.json", "delayMs": 0 }
+}

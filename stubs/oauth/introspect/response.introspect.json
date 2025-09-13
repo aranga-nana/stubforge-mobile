@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "body": {
+    "active": true,
+    "scope": "basic",
+    "client_id": "stub-client",
+    "username": "user123",
+    "token_type": "access_token",
+    "exp": 1640995200,
+    "iat": 1640991600,
+    "sub": "user123",
+    "aud": "stub-client",
+    "iss": "stub-server"
+  }
+}

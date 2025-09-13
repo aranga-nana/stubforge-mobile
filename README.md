@@ -195,27 +195,72 @@ curl -X POST http://localhost:3000/orders -H 'Content-Type: application/json' -d
 ## Config
 Edit `config/local.json` for port, CORS, global delay, fallback.
 
-## Configurable OAuth Paths
-You can redefine all OAuth-related endpoints in `config/local.json` under `oauth`:
+## Configurable OAuth2 Endpoints
+All OAuth2 and OpenID Connect endpoints are fully configurable in `config/local.json`. This allows you to match your existing API structure or test different endpoint configurations:
+
 ```json
-"oauth": {
-  "basePath": "/v2/oauth/abc",
-  "authorizePath": "/v2/oauth/abc/authorize",
-  "tokenPath": "/v2/oauth/abc/token",
-  "jwksPath": "/custom/.well-known/jwks.json",
-  "publicKeyPath": "/custom/.well-known/public.pem"
+{
+  "oauth": {
+    "basePath": "/oauth",
+    "authorizePath": "/oauth/authorize",
+    "tokenPath": "/oauth/token", 
+    "devicePath": "/oauth/device_authorization",
+    "introspectPath": "/oauth/introspect",
+    "revokePath": "/oauth/revoke",
+    "userinfoPath": "/oauth/userinfo",
+    "jwksPath": "/.well-known/jwks.json",
+    "publicKeyPath": "/.well-known/public.pem",
+    "discoveryPath": "/.well-known/openid_configuration",
+    "deviceVerificationPath": "/device",
+    "deviceVerifyPath": "/device/verify"
+  }
 }
 ```
-Only specify what you need; unspecified fields fall back to defaults:
-- basePath default: `/oauth`
-- authorizePath default: `<basePath>/authorize`
-- tokenPath default: `<basePath>/token`
-- jwksPath default: `/.well-known/jwks.json`
-- publicKeyPath default: `/.well-known/public.pem`
 
-After changing paths, restart the server and update any Postman collection or mobile client code to use the new endpoints.
+### Available Endpoints
+| Endpoint | Purpose | Configurable Path |
+|----------|---------|-------------------|
+| Authorization | OAuth2 authorization endpoint | `authorizePath` |
+| Token | Token exchange endpoint | `tokenPath` |
+| Device Authorization | Device flow initiation | `devicePath` |
+| Token Introspection | Validate tokens | `introspectPath` |
+| Token Revocation | Revoke tokens | `revokePath` |
+| UserInfo | OpenID Connect user info | `userinfoPath` |
+| Discovery | OpenID Connect discovery | `discoveryPath` |
+| JWKS | JSON Web Key Set | `jwksPath` |
+| Public Key | RSA public key | `publicKeyPath` |
+| Device Verification | Device code verification page | `deviceVerificationPath` |
+| Device Verify | Device code form handler | `deviceVerifyPath` |
 
-That's it. Keep only what you need.
+### Example Custom Configuration
+```json
+{
+  "oauth": {
+    "basePath": "/auth",
+    "authorizePath": "/auth/authorize",
+    "tokenPath": "/auth/token",
+    "userinfoPath": "/auth/me",
+    "jwksPath": "/auth/jwks",
+    "discoveryPath": "/auth/.well-known/openid_configuration"
+  }
+}
+```
+
+### Supported OAuth2 Flows
+- ✅ **Authorization Code Flow** (with PKCE S256/plain)
+- ✅ **Implicit Flow** (response_type=token)
+- ✅ **Resource Owner Password Credentials Flow**
+- ✅ **Client Credentials Flow** 
+- ✅ **Refresh Token Flow**
+- ✅ **Device Authorization Grant** (RFC 8628)
+- ✅ **JWT Bearer Grant** (RFC 7523)
+- ✅ **OpenID Connect** (ID tokens, UserInfo, Discovery)
+
+### Client Authentication Methods
+- ✅ **client_secret_basic** (Authorization header)
+- ✅ **client_secret_post** (form parameters)  
+- ✅ **private_key_jwt** (JWT assertion)
+- ✅ **none** (public clients)
 
 ## Docker
 ```

@@ -19,8 +19,15 @@ const oauthCfg = config.oauth || {};
 const OAUTH_BASE_PATH = oauthCfg.basePath || '/oauth';
 const OAUTH_AUTHORIZE_PATH = oauthCfg.authorizePath || joinPath(OAUTH_BASE_PATH, 'authorize');
 const OAUTH_TOKEN_PATH = oauthCfg.tokenPath || joinPath(OAUTH_BASE_PATH, 'token');
+const OAUTH_DEVICE_PATH = oauthCfg.devicePath || joinPath(OAUTH_BASE_PATH, 'device_authorization');
+const OAUTH_INTROSPECT_PATH = oauthCfg.introspectPath || joinPath(OAUTH_BASE_PATH, 'introspect');
+const OAUTH_REVOKE_PATH = oauthCfg.revokePath || joinPath(OAUTH_BASE_PATH, 'revoke');
+const OAUTH_USERINFO_PATH = oauthCfg.userinfoPath || joinPath(OAUTH_BASE_PATH, 'userinfo');
 const OAUTH_JWKS_PATH = oauthCfg.jwksPath || '/.well-known/jwks.json';
 const OAUTH_PUBLIC_PEM_PATH = oauthCfg.publicKeyPath || '/.well-known/public.pem';
+const OAUTH_DISCOVERY_PATH = oauthCfg.discoveryPath || '/.well-known/openid_configuration';
+const DEVICE_VERIFICATION_PATH = oauthCfg.deviceVerificationPath || '/device';
+const DEVICE_VERIFY_PATH = oauthCfg.deviceVerifyPath || '/device/verify';
 
 // New: load all rule files from stubs directory recursively
 function loadStubRules(stubsDir) {
@@ -171,12 +178,64 @@ if (jwkCache) {
 const issuedRefreshTokens = new Set();
 // PKCE / Authorization Code in-memory store
 const authCodes = new Map(); // code -> { clientId, scope, redirectUri, codeChallenge, method, createdAt }
+// Device Code Flow in-memory store
+const deviceCodes = new Map(); // device_code -> { userCode, clientId, scope, verified, createdAt }
 
 function generateRandomString(len = 32) {
   return crypto.randomBytes(len).toString('base64url').slice(0, len + 4); // extra to account for removed padding
 }
 function base64urlSha256(input) {
   return crypto.createHash('sha256').update(input).digest('base64').replace(/=+/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+// Client authentication helper
+function authenticateClient(req) {
+  const authHeader = req.headers.authorization;
+  const clientId = req.body.client_id;
+  const clientSecret = req.body.client_secret;
+  const clientAssertion = req.body.client_assertion;
+  const clientAssertionType = req.body.client_assertion_type;
+  
+  // Client Secret Basic (Authorization header)
+  if (authHeader && authHeader.startsWith('Basic ')) {
+    try {
+      const credentials = Buffer.from(authHeader.substring(6), 'base64').toString('utf-8');
+      const [id, secret] = credentials.split(':');
+      return { clientId: id, authenticated: true, method: 'client_secret_basic' };
+    } catch (err) {
+      return { error: 'invalid_client', error_description: 'Invalid basic auth credentials' };
+    }
+  }
+  
+  // Client Secret Post (form parameters)
+  if (clientId && clientSecret) {
+    return { clientId, authenticated: true, method: 'client_secret_post' };
+  }
+  
+  // JWT Bearer client authentication
+  if (clientAssertion && clientAssertionType === 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer') {
+    try {
+      const decoded = jwt.verify(clientAssertion, publicKey, { algorithms: ['RS256'] });
+      if (decoded.sub !== decoded.iss) {
+        return { error: 'invalid_client', error_description: 'JWT assertion subject must equal issuer' };
+      }
+      return { clientId: decoded.sub, authenticated: true, method: 'private_key_jwt' };
+    } catch (err) {
+      return { error: 'invalid_client', error_description: 'Invalid JWT assertion: ' + err.message };
+    }
+  }
+  
+  // No authentication (public client)
+  if (clientId) {
+    return { clientId, authenticated: true, method: 'none' };
+  }
+  
+  // For stub server: optionally allow default client if explicitly configured
+  if (config.allowDefaultClient === true) {
+    return { clientId: 'default-client', authenticated: true, method: 'none' };
+  }
+  
+  return { error: 'invalid_client', error_description: 'No client authentication provided' };
 }
 
 // Added: helper token signing functions (were previously referenced but undefined)
@@ -197,34 +256,223 @@ function signRefreshToken(claims, ttlSeconds = 7 * 24 * 3600) {
   return signAccessToken({ ...claims, type: 'refresh' }, ttlSeconds);
 }
 
+function signIdToken(claims, ttlSeconds = 3600) {
+  if (!privateKey) return 'unsigned-id-token';
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: 'stub-server',
+    aud: claims.aud || 'stub-client',
+    iat: now,
+    exp: now + ttlSeconds,
+    sub: claims.sub || 'user123',
+    auth_time: now,
+    nonce: claims.nonce,
+    at_hash: claims.at_hash, // Optional: hash of access token
+    ...claims
+  };
+  return jwt.sign(payload, privateKey, { algorithm: 'RS256', keyid: 'local-dev-key' });
+}
+
 // Authorization endpoint (simplified, auto-approves user)
 app.get(OAUTH_AUTHORIZE_PATH, (req, res) => {
-  const { response_type, client_id, redirect_uri, scope = 'basic', state, code_challenge, code_challenge_method = 'plain' } = req.query;
-  if (response_type !== 'code') return res.status(400).json({ error: 'unsupported_response_type' });
-  if (!client_id || !redirect_uri) return res.status(400).json({ error: 'invalid_request', error_description: 'client_id and redirect_uri required' });
-  if (code_challenge_method && !['plain', 'S256'].includes(code_challenge_method)) return res.status(400).json({ error: 'invalid_request', error_description: 'code_challenge_method must be plain or S256' });
-  if (code_challenge_method && !code_challenge) return res.status(400).json({ error: 'invalid_request', error_description: 'code_challenge required for PKCE' });
+  const { response_type, client_id, redirect_uri, scope = 'basic', state, code_challenge, code_challenge_method = 'plain', nonce } = req.query;
+  
+  if (!['code', 'token', 'id_token', 'code token', 'code id_token', 'token id_token', 'code token id_token'].includes(response_type)) {
+    return res.status(400).json({ error: 'unsupported_response_type' });
+  }
+  
+  if (!client_id || !redirect_uri) {
+    return res.status(400).json({ error: 'invalid_request', error_description: 'client_id and redirect_uri required' });
+  }
 
-  const code = generateRandomString(40);
-  authCodes.set(code, { clientId: client_id, scope, redirectUri: redirect_uri, codeChallenge: code_challenge, method: code_challenge_method, createdAt: Date.now() });
+  // Handle Authorization Code Flow
+  if (response_type === 'code') {
+    if (code_challenge_method && !['plain', 'S256'].includes(code_challenge_method)) {
+      return res.status(400).json({ error: 'invalid_request', error_description: 'code_challenge_method must be plain or S256' });
+    }
+    if (code_challenge_method && !code_challenge) {
+      return res.status(400).json({ error: 'invalid_request', error_description: 'code_challenge required for PKCE' });
+    }
 
-  const qp = new URLSearchParams({ code });
-  if (state) qp.append('state', state);
+    const code = generateRandomString(40);
+    authCodes.set(code, { 
+      clientId: client_id, 
+      scope, 
+      redirectUri: redirect_uri, 
+      codeChallenge: code_challenge, 
+      method: code_challenge_method, 
+      createdAt: Date.now() 
+    });
 
-  // Redirect with code
-  return res.redirect(302, `${redirect_uri}${redirect_uri.includes('?') ? '&' : '?'}${qp.toString()}`);
+    const qp = new URLSearchParams({ code });
+    if (state) qp.append('state', state);
+
+    return res.redirect(302, `${redirect_uri}${redirect_uri.includes('?') ? '&' : '?'}${qp.toString()}`);
+  }
+
+  // Handle Implicit Flow
+  if (response_type === 'token') {
+    if (!privateKey) {
+      return res.status(500).json({ error: 'server_not_configured', error_description: 'JWT keys missing' });
+    }
+
+    const accessToken = signAccessToken({ sub: client_id, scope, grant: 'implicit' }, 3600);
+    const qp = new URLSearchParams({
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: '3600',
+      scope
+    });
+    if (state) qp.append('state', state);
+
+    // Fragment response for implicit flow
+    return res.redirect(302, `${redirect_uri}#${qp.toString()}`);
+  }
+
+  // Handle OpenID Connect flows (id_token responses)
+  if (response_type.includes('id_token')) {
+    if (!privateKey) {
+      return res.status(500).json({ error: 'server_not_configured', error_description: 'JWT keys missing' });
+    }
+
+    const qp = new URLSearchParams();
+    const responseTypes = response_type.split(' ');
+    let accessToken;
+    
+    if (responseTypes.includes('code')) {
+      const code = generateRandomString(40);
+      authCodes.set(code, { 
+        clientId: client_id, 
+        scope, 
+        redirectUri: redirect_uri, 
+        codeChallenge: code_challenge, 
+        method: code_challenge_method, 
+        nonce,
+        createdAt: Date.now() 
+      });
+      qp.append('code', code);
+    }
+
+    if (responseTypes.includes('token')) {
+      accessToken = signAccessToken({ sub: client_id, scope, grant: 'implicit' }, 3600);
+      qp.append('access_token', accessToken);
+      qp.append('token_type', 'Bearer');
+      qp.append('expires_in', '3600');
+    }
+
+    if (responseTypes.includes('id_token')) {
+      const idTokenClaims = { sub: client_id, aud: client_id, nonce };
+      // Include at_hash if access token is also being issued
+      if (accessToken) {
+        idTokenClaims.at_hash = base64urlSha256(accessToken).substring(0, 22); // First half of SHA256 hash
+      }
+      const idToken = signIdToken(idTokenClaims, 3600);
+      qp.append('id_token', idToken);
+    }
+
+    if (state) qp.append('state', state);
+
+    // Fragment response for flows containing id_token
+    return res.redirect(302, `${redirect_uri}#${qp.toString()}`);
+  }
+
+  return res.status(400).json({ error: 'unsupported_response_type' });
 });
 // Optional POST support
 app.post(OAUTH_AUTHORIZE_PATH, express.urlencoded({ extended: false }), (req, res) => {
   req.query = { ...req.body }; // normalize
   return app._router.handle(req, res, () => {}); // re-dispatch as GET logic
 });
+
+// Device Authorization Grant endpoint (RFC 8628)
+app.post(OAUTH_DEVICE_PATH, (req, res) => {
+  const { client_id, scope = 'basic' } = req.body;
+  if (!client_id) {
+    return res.status(400).json({ 
+      error: 'invalid_request', 
+      error_description: 'client_id is required' 
+    });
+  }
+
+  const deviceCode = generateRandomString(32);
+  const userCode = generateRandomString(8).toUpperCase().substring(0, 8);
+  const verificationUri = `http://localhost:${process.env.PORT || config.port || 3000}${DEVICE_VERIFICATION_PATH}`;
+  const verificationUriComplete = `${verificationUri}?user_code=${userCode}`;
+  const expiresIn = 1800; // 30 minutes
+  const interval = 5; // 5 seconds polling interval
+
+  deviceCodes.set(deviceCode, {
+    userCode,
+    clientId: client_id,
+    scope,
+    verified: false,
+    createdAt: Date.now()
+  });
+
+  // Auto-approve after 10 seconds for stub purposes
+  setTimeout(() => {
+    const stored = deviceCodes.get(deviceCode);
+    if (stored) {
+      stored.verified = true;
+      stored.approvedAt = Date.now();
+    }
+  }, 10000);
+
+  res.json({
+    device_code: deviceCode,
+    user_code: userCode,
+    verification_uri: verificationUri,
+    verification_uri_complete: verificationUriComplete,
+    expires_in: expiresIn,
+    interval
+  });
+});
+
+// Device verification page (simple HTML for user to approve)
+app.get(DEVICE_VERIFICATION_PATH, (req, res) => {
+  const userCode = req.query.user_code;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><title>Device Authorization</title></head>
+    <body>
+      <h1>Device Authorization</h1>
+      <p>Please enter the code displayed on your device:</p>
+      <form method="post" action="${DEVICE_VERIFY_PATH}">
+        <input type="text" name="user_code" value="${userCode || ''}" placeholder="Enter code" required>
+        <button type="submit">Authorize</button>
+      </form>
+    </body>
+    </html>
+  `;
+  res.send(html);
+});
+
+app.post(DEVICE_VERIFY_PATH, express.urlencoded({ extended: false }), (req, res) => {
+  const { user_code } = req.body;
+  const deviceEntry = Array.from(deviceCodes.values()).find(d => d.userCode === user_code);
+  
+  if (deviceEntry) {
+    deviceEntry.verified = true;
+    deviceEntry.approvedAt = Date.now();
+    res.send('<h1>Device Authorized Successfully!</h1><p>You can now close this window.</p>');
+  } else {
+    res.status(400).send('<h1>Invalid Code</h1><p>The code you entered is invalid or expired.</p>');
+  }
+});
 // OAuth2 token endpoint (form-urlencoded or JSON)
 app.post(OAUTH_TOKEN_PATH, (req, res) => {
   if (!privateKey) return res.status(500).json({ error: 'server_not_configured', error_description: 'JWT keys missing' });
+  
+  // Authenticate client
+  const clientAuth = authenticateClient(req);
+  if (clientAuth.error) {
+    return res.status(401).json({ error: clientAuth.error, error_description: clientAuth.error_description });
+  }
+  
   const grantType = req.body.grant_type || req.body.grantType;
   const scope = (req.body.scope || 'basic').split(/\s+/).filter(Boolean).join(' ');
-  const clientId = req.body.client_id || 'client';
+  const clientId = clientAuth.clientId;
   const username = req.body.username;
   const refreshTokenInput = req.body.refresh_token;
   const accessTTL = 3600;
@@ -301,6 +549,78 @@ app.post(OAUTH_TOKEN_PATH, (req, res) => {
       const accessToken = signAccessToken({ sub: stored.clientId, scope: stored.scope, grant: 'authorization_code' }, accessTTL);
       const refreshToken = signRefreshToken({ sub: stored.clientId, scope: stored.scope }, refreshTTL);
       issuedRefreshTokens.add(refreshToken);
+      
+      const tokenResponse = {
+        access_token: accessToken,
+        token_type: 'Bearer',
+        expires_in: accessTTL,
+        refresh_token: refreshToken,
+        scope: stored.scope
+      };
+      
+      // Add ID token if OpenID Connect scope is requested
+      if (stored.scope && stored.scope.includes('openid')) {
+        const idToken = signIdToken({ 
+          sub: stored.clientId, 
+          aud: stored.clientId, 
+          nonce: stored.nonce,
+          at_hash: base64urlSha256(accessToken).substring(0, 22) // First half of SHA256 hash in base64url
+        }, accessTTL);
+        tokenResponse.id_token = idToken;
+      }
+      
+      return res.json(tokenResponse);
+    } else if (grantType === 'urn:ietf:params:oauth:grant-type:jwt-bearer') {
+      const assertion = req.body.assertion;
+      if (!assertion) return res.status(400).json({ error: 'invalid_request', error_description: 'assertion required' });
+      
+      try {
+        // Verify the JWT assertion (for stub purposes, we'll accept any valid JWT)
+        const decoded = jwt.verify(assertion, publicKey, { algorithms: ['RS256'] });
+        
+        // In a real implementation, you'd validate the issuer, audience, and other claims
+        if (!decoded.sub) {
+          return res.status(400).json({ error: 'invalid_grant', error_description: 'assertion missing subject' });
+        }
+        
+        const accessToken = signAccessToken({ 
+          sub: decoded.sub, 
+          scope, 
+          grant: 'jwt-bearer',
+          original_issuer: decoded.iss 
+        }, accessTTL);
+        
+        return res.json({
+          access_token: accessToken,
+          token_type: 'Bearer',
+          expires_in: accessTTL,
+          scope
+        });
+      } catch (err) {
+        return res.status(400).json({ error: 'invalid_grant', error_description: 'assertion invalid: ' + err.message });
+      }
+    } else if (grantType === 'urn:ietf:params:oauth:grant-type:device_code') {
+      const deviceCode = req.body.device_code;
+      if (!deviceCode) return res.status(400).json({ error: 'invalid_request', error_description: 'device_code required' });
+      
+      const stored = deviceCodes.get(deviceCode);
+      if (!stored) return res.status(400).json({ error: 'invalid_grant', error_description: 'device code invalid or expired' });
+      
+      // Check if code has expired (30 minutes)
+      if (Date.now() - stored.createdAt > 1800000) {
+        deviceCodes.delete(deviceCode);
+        return res.status(400).json({ error: 'expired_token', error_description: 'device code has expired' });
+      }
+      
+      if (!stored.verified) {
+        return res.status(400).json({ error: 'authorization_pending', error_description: 'User has not yet approved the device' });
+      }
+      
+      deviceCodes.delete(deviceCode); // one-time use
+      const accessToken = signAccessToken({ sub: stored.clientId, scope: stored.scope, grant: 'device_code' }, accessTTL);
+      const refreshToken = signRefreshToken({ sub: stored.clientId, scope: stored.scope }, refreshTTL);
+      issuedRefreshTokens.add(refreshToken);
+      
       return res.json({
         access_token: accessToken,
         token_type: 'Bearer',
@@ -315,6 +635,162 @@ app.post(OAUTH_TOKEN_PATH, (req, res) => {
     console.error('OAuth token error', e);
     return res.status(500).json({ error: 'server_error' });
   }
+});
+
+// Token Introspection endpoint (RFC 7662)
+app.post(OAUTH_INTROSPECT_PATH, (req, res) => {
+  const token = req.body.token;
+  const tokenTypeHint = req.body.token_type_hint; // 'access_token' or 'refresh_token'
+  
+  if (!token) {
+    return res.status(400).json({ error: 'invalid_request', error_description: 'token parameter required' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
+    const now = Math.floor(Date.now() / 1000);
+    
+    // Check if token is expired
+    if (decoded.exp && decoded.exp < now) {
+      return res.json({ active: false });
+    }
+    
+    // Return token introspection response
+    return res.json({
+      active: true,
+      scope: decoded.scope || 'basic',
+      client_id: decoded.aud || 'stub-client',
+      username: decoded.sub,
+      token_type: decoded.type === 'refresh' ? 'refresh_token' : 'access_token',
+      exp: decoded.exp,
+      iat: decoded.iat,
+      sub: decoded.sub,
+      aud: decoded.aud,
+      iss: decoded.iss,
+      jti: decoded.jti
+    });
+  } catch (err) {
+    // Token is invalid or malformed
+    return res.json({ active: false });
+  }
+});
+
+// Token Revocation endpoint (RFC 7009)
+app.post(OAUTH_REVOKE_PATH, (req, res) => {
+  const token = req.body.token;
+  const tokenTypeHint = req.body.token_type_hint; // 'access_token' or 'refresh_token'
+  
+  if (!token) {
+    return res.status(400).json({ error: 'invalid_request', error_description: 'token parameter required' });
+  }
+  
+  try {
+    // For JWTs, we can't really "revoke" them since they're stateless
+    // In a real implementation, you'd maintain a blacklist
+    // For this stub, we'll just remove from our refresh token store if it exists
+    if (issuedRefreshTokens.has(token)) {
+      issuedRefreshTokens.delete(token);
+    }
+    
+    // Always return 200 OK for successful revocation (even if token was already invalid)
+    return res.status(200).send();
+  } catch (err) {
+    // Even if there's an error, RFC 7009 says to return 200
+    return res.status(200).send();
+  }
+});
+
+// OpenID Connect UserInfo endpoint
+app.get(OAUTH_USERINFO_PATH, (req, res) => {
+  // Handle both GET and POST
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'invalid_token', error_description: 'Bearer token required' });
+  }
+  
+  const token = authHeader.substring(7);
+  try {
+    const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
+    const now = Math.floor(Date.now() / 1000);
+    
+    if (decoded.exp && decoded.exp < now) {
+      return res.status(401).json({ error: 'invalid_token', error_description: 'Token expired' });
+    }
+    
+    // Return user info (stub data)
+    return res.json({
+      sub: decoded.sub,
+      name: 'John Doe',
+      given_name: 'John',
+      family_name: 'Doe',
+      preferred_username: decoded.sub,
+      email: `${decoded.sub}@example.com`,
+      email_verified: true,
+      picture: 'https://via.placeholder.com/150',
+      updated_at: Math.floor(Date.now() / 1000)
+    });
+  } catch (err) {
+    return res.status(401).json({ error: 'invalid_token', error_description: 'Token invalid' });
+  }
+});
+
+app.post(OAUTH_USERINFO_PATH, (req, res) => {
+  // Handle both GET and POST - reuse GET logic
+  return app._router.handle({ ...req, method: 'GET' }, res, () => {});
+});
+
+// OpenID Connect Discovery endpoint
+app.get(OAUTH_DISCOVERY_PATH, (req, res) => {
+  const baseUrl = `http://localhost:${process.env.PORT || 3000}`;
+  
+  res.json({
+    issuer: baseUrl,
+    authorization_endpoint: baseUrl + OAUTH_AUTHORIZE_PATH,
+    token_endpoint: baseUrl + OAUTH_TOKEN_PATH,
+    userinfo_endpoint: baseUrl + OAUTH_USERINFO_PATH,
+    jwks_uri: baseUrl + OAUTH_JWKS_PATH,
+    device_authorization_endpoint: baseUrl + OAUTH_DEVICE_PATH,
+    introspection_endpoint: baseUrl + OAUTH_INTROSPECT_PATH,
+    revocation_endpoint: baseUrl + OAUTH_REVOKE_PATH,
+    response_types_supported: [
+      'code',
+      'token',
+      'id_token',
+      'code token',
+      'code id_token',
+      'token id_token',
+      'code token id_token'
+    ],
+    grant_types_supported: [
+      'authorization_code',
+      'implicit',
+      'password',
+      'client_credentials',
+      'refresh_token',
+      'urn:ietf:params:oauth:grant-type:device_code',
+      'urn:ietf:params:oauth:grant-type:jwt-bearer'
+    ],
+    subject_types_supported: ['public'],
+    id_token_signing_alg_values_supported: ['RS256'],
+    scopes_supported: ['openid', 'profile', 'email', 'basic'],
+    token_endpoint_auth_methods_supported: [
+      'client_secret_basic',
+      'client_secret_post',
+      'none'
+    ],
+    code_challenge_methods_supported: ['plain', 'S256'],
+    claims_supported: [
+      'sub',
+      'name',
+      'given_name',
+      'family_name',
+      'preferred_username',
+      'email',
+      'email_verified',
+      'picture',
+      'updated_at'
+    ]
+  });
 });
 
 // Wrap original interpolate for Date.now already handled
@@ -379,7 +855,35 @@ app.listen(port, () => {
   console.log(`Config: ${CONFIG_FILE}`);
   console.log(`Stubs dir: ${config.stubsDir || 'stubs'}`);
   console.log(`Rules loaded: ${rules.length}`);
-  console.log(`OAuth authorize path: ${OAUTH_AUTHORIZE_PATH}`);
-  console.log(`OAuth token path: ${OAUTH_TOKEN_PATH}`);
-  console.log(`JWKS path: ${OAUTH_JWKS_PATH}`);
+  console.log('');
+  console.log('OAuth2 & OpenID Connect Endpoints:');
+  console.log(`  Authorization: ${OAUTH_AUTHORIZE_PATH}`);
+  console.log(`  Token: ${OAUTH_TOKEN_PATH}`);
+  console.log(`  Device Authorization: ${OAUTH_DEVICE_PATH}`);
+  console.log(`  Token Introspection: ${OAUTH_INTROSPECT_PATH}`);
+  console.log(`  Token Revocation: ${OAUTH_REVOKE_PATH}`);
+  console.log(`  UserInfo: ${OAUTH_USERINFO_PATH}`);
+  console.log(`  Discovery: ${OAUTH_DISCOVERY_PATH}`);
+  console.log(`  JWKS: ${OAUTH_JWKS_PATH}`);
+  console.log(`  Public Key: ${OAUTH_PUBLIC_PEM_PATH}`);
+  console.log(`  Device Verification: ${DEVICE_VERIFICATION_PATH}`);
+  console.log(`  Device Verify: ${DEVICE_VERIFY_PATH}`);
+  console.log('');
+  console.log('💡 All endpoint paths are configurable in config/local.json');
+  console.log('');
+  console.log('Supported OAuth2 Flows:');
+  console.log('  ✓ Authorization Code Flow (with PKCE)');
+  console.log('  ✓ Implicit Flow');
+  console.log('  ✓ Resource Owner Password Credentials Flow');
+  console.log('  ✓ Client Credentials Flow');
+  console.log('  ✓ Refresh Token Flow');
+  console.log('  ✓ Device Authorization Grant (RFC 8628)');
+  console.log('  ✓ JWT Bearer Grant (RFC 7523)');
+  console.log('  ✓ OpenID Connect (ID tokens, UserInfo, Discovery)');
+  console.log('');
+  console.log('Client Authentication Methods:');
+  console.log('  ✓ client_secret_basic (Authorization header)');
+  console.log('  ✓ client_secret_post (form parameters)');
+  console.log('  ✓ private_key_jwt (JWT assertion)');
+  console.log('  ✓ none (public clients)');
 });

@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "body": {
+    "access_token": "jwt_bearer_access_token",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "scope": "basic"
+  }
+}

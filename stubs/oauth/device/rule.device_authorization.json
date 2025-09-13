@@ -1,0 +1,10 @@
+{
+  "id": "oauth-device-authorization",
+  "match": { 
+    "method": "POST", 
+    "path": "/oauth/device_authorization", 
+    "bodyContains": ["client_id"], 
+    "query": {} 
+  },
+  "response": { "file": "response.device_authorization.json", "delayMs": 0 }
+}

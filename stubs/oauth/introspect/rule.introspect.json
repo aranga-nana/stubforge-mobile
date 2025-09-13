@@ -1,0 +1,10 @@
+{
+  "id": "oauth-introspect",
+  "match": { 
+    "method": "POST", 
+    "path": "/oauth/introspect", 
+    "bodyContains": ["token"], 
+    "query": {} 
+  },
+  "response": { "file": "response.introspect.json", "delayMs": 0 }
+}

@@ -2,6 +2,7 @@
   "port": 3000,
   "logging": true,
   "globalDelayMs": 0,
+  "allowDefaultClient": false,
   "cors": {
     "enabled": true,
     "origins": ["*"]
@@ -11,8 +12,15 @@
     "basePath": "/oauth",
     "authorizePath": "/oauth/authorize",
     "tokenPath": "/oauth/token",
+    "devicePath": "/oauth/device_authorization",
+    "introspectPath": "/oauth/introspect",
+    "revokePath": "/oauth/revoke",
+    "userinfoPath": "/oauth/userinfo",
     "jwksPath": "/.well-known/jwks.json",
-    "publicKeyPath": "/.well-known/public.pem"
+    "publicKeyPath": "/.well-known/public.pem",
+    "discoveryPath": "/.well-known/openid_configuration",
+    "deviceVerificationPath": "/device",
+    "deviceVerifyPath": "/device/verify"
   },
   "fallback": { "status": 404, "json": { "error": "No matching stub rule" } }
 }
