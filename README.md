@@ -239,6 +239,20 @@ npm run validate:rules
 ```
 Ensures every `rule*.json` has id, match + response.file exists.
 
+## Postman Collections
+Updated PKCE collection & environment live in `postman/`:
+- Collection: `OAuth2-StubKit-Mobile-PKCE.postman_collection.json`
+- Environment: `OAuth2-StubKit-Mobile-Local.postman_environment.json`
+
+Environment variables map directly to values in `config/local.json` so you can change OAuth paths without editing the requests:
+- `base_url` -> `http://localhost:3000`
+- `oauth_authorize_path` -> `oauth.authorizePath`
+- `oauth_token_path` -> `oauth.tokenPath`
+- `oauth_jwks_path` -> `oauth.jwksPath`
+- `oauth_public_key_path` -> `oauth.publicKeyPath`
+
+Run flow steps in order (Reset -> Step 1 -> Step 2 -> Step 3 -> Step 5 -> Step 4 as needed). Auto-capture of `auth_code` via Location header is built in.
+
 ## Contributing
 See `CONTRIBUTING.md` & `CODE_OF_CONDUCT.md`. PRs welcome.
 
