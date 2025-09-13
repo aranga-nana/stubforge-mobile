@@ -333,6 +333,7 @@ app.get(OAUTH_AUTHORIZE_PATH, (req, res) => {
 
     const qp = new URLSearchParams();
     const responseTypes = response_type.split(' ');
+    let accessToken;
     
     if (responseTypes.includes('code')) {
       const code = generateRandomString(40);
@@ -349,14 +350,19 @@ app.get(OAUTH_AUTHORIZE_PATH, (req, res) => {
     }
 
     if (responseTypes.includes('token')) {
-      const accessToken = signAccessToken({ sub: client_id, scope, grant: 'implicit' }, 3600);
+      accessToken = signAccessToken({ sub: client_id, scope, grant: 'implicit' }, 3600);
       qp.append('access_token', accessToken);
       qp.append('token_type', 'Bearer');
       qp.append('expires_in', '3600');
     }
 
     if (responseTypes.includes('id_token')) {
-      const idToken = signIdToken({ sub: client_id, aud: client_id, nonce }, 3600);
+      const idTokenClaims = { sub: client_id, aud: client_id, nonce };
+      // Include at_hash if access token is also being issued
+      if (accessToken) {
+        idTokenClaims.at_hash = base64urlSha256(accessToken).substring(0, 22); // First half of SHA256 hash
+      }
+      const idToken = signIdToken(idTokenClaims, 3600);
       qp.append('id_token', idToken);
     }
 
@@ -554,7 +560,7 @@ app.post(OAUTH_TOKEN_PATH, (req, res) => {
           sub: stored.clientId, 
           aud: stored.clientId, 
           nonce: stored.nonce,
-          at_hash: crypto.createHash('sha256').update(accessToken.split('.')[0]).digest('base64').substring(0, 16)
+          at_hash: base64urlSha256(accessToken).substring(0, 22) // First half of SHA256 hash in base64url
         }, accessTTL);
         tokenResponse.id_token = idToken;
       }
