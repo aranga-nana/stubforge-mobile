@@ -1,0 +1,5 @@
+{
+  "id": "oauth-refresh",
+  "match": { "method": "POST", "path": "/oauth/token", "bodyContains": ["grant_type","refresh_token"], "query": {} },
+  "response": { "file": "response.refresh.json", "delayMs": 0 }
+}

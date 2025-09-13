@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "body": {
+    "products": [
+      { "id": "p1", "name": "Standard Widget" },
+      { "id": "p2", "name": "Advanced Gadget" }
+    ],
+    "note": "Default product list"
+  }
+}

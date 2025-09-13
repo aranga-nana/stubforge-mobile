@@ -1,0 +1,12 @@
+{
+  "id": "user-detail-dynamic",
+  "match": {
+    "method": "GET",
+    "pathPattern": "/users/:id",
+    "query": {}
+  },
+  "response": {
+    "file": "response.detail.json",
+    "delayMs": 50
+  }
+}

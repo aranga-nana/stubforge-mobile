@@ -1,0 +1,9 @@
+{
+  "id": "products-list-filtered",
+  "match": {
+    "method": "GET",
+    "path": "/products",
+    "query": { "category": "premium" }
+  },
+  "response": { "file": "response.products.filtered.json", "delayMs": 0 }
+}

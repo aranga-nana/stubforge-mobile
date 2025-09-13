@@ -1,0 +1,9 @@
+{
+  "id": "products-list",
+  "match": {
+    "method": "GET",
+    "path": "/products",
+    "query": {}
+  },
+  "response": { "file": "response.products.default.json", "delayMs": 0 }
+}

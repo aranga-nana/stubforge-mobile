@@ -1,0 +1,226 @@
+{
+  "info": {
+    "_postman_id": "stub-server-oauth2-pkce-collection",
+    "name": "Stub Server OAuth2 PKCE",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection to exercise Authorization Code + PKCE flow against local stub server."
+  },
+  "item": [
+    {
+      "name": "Reset Flow (Clear PKCE Vars)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "['auth_code','code_verifier','code_challenge','access_token','refresh_token','state','returned_state','pkce_session_id','pkce_session_id_confirm'].forEach(k=>pm.environment.unset(k));",
+              "pm.environment.set('force_reset','true');",
+              "console.log('PKCE env cleared and force_reset=true');"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('Flow reset', ()=>pm.expect(true).to.be.true);"] , "type": "text/javascript" }
+        }
+      ],
+      "request": { "method": "GET", "header": [], "url": { "raw": "http://localhost:3000/health", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["health"] }, "description": "Run to clear all PKCE related variables before starting a fresh flow." },
+      "response": []
+    },
+    {
+      "name": "Step 1 - Generate PKCE Verifier & Challenge (Pre-request JS Only)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// RFC 7636 compliant PKCE verifier & challenge generation (ASCII hashing, no hex decoding)",
+              "function base64url(b64){return b64.replace(/=+/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');}",
+              "function sha256b64url(str){ const wa = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(str)); return base64url(CryptoJS.enc.Base64.stringify(wa)); }",
+              "function randomVerifier(len){ const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'; let out=''; for(let i=0;i<len;i++){ out+=chars.charAt(Math.floor(Math.random()*chars.length)); } return out; }",
+              "if(!pm.environment.get('code_verifier') || pm.environment.get('force_reset')==='true'){",
+              "  const verifier = randomVerifier(64); // length 43-128 allowed",
+              "  pm.environment.set('code_verifier', verifier);",
+              "  pm.environment.set('state', Date.now().toString());",
+              "  pm.environment.set('pkce_session_id', Date.now().toString());",
+              "  pm.environment.unset('force_reset');",
+              "  console.log('Generated new PKCE verifier');",
+              "} else { console.log('Reusing existing code_verifier'); }",
+              "// Always derive challenge from ASCII verifier",
+              "const verifierCurrent = pm.environment.get('code_verifier');",
+              "pm.environment.set('code_challenge', sha256b64url(verifierCurrent));",
+              "pm.environment.set('client_id', pm.environment.get('client_id')||'mobile-app');",
+              "pm.environment.set('redirect_uri', pm.environment.get('redirect_uri')||'http://localhost:3000/callback');",
+              "pm.environment.set('scope', pm.environment.get('scope')||'openid profile');",
+              "pm.environment.set('code_challenge_method','S256');",
+              "console.log('code_verifier', pm.environment.get('code_verifier'));",
+              "console.log('code_challenge', pm.environment.get('code_challenge'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Run first (or after reset) to ensure PKCE values are set. Re-running without reset preserves verifier to avoid mismatch."
+      },
+      "response": []
+    },
+    {
+      "name": "Step 2 - Authorize (Auto-capture Code)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "function base64url(b64){return b64.replace(/=+/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');}",
+              "function sha256b64url(str){ const wa = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(str)); return base64url(CryptoJS.enc.Base64.stringify(wa)); }",
+              "['code_verifier','state','client_id','redirect_uri'].forEach(k=>{ if(!pm.environment.get(k)) throw new Error('Missing '+k+' run Step 1'); });",
+              "const expected = sha256b64url(pm.environment.get('code_verifier'));",
+              "if(!pm.environment.get('code_challenge')) pm.environment.set('code_challenge', expected);",
+              "if(pm.environment.get('code_challenge') !== expected){ throw new Error('code_challenge mismatch – run Reset Flow'); }"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Extract authorization code from Location header (redirect disabled)",
+              "const loc = pm.response.headers.get('Location');",
+              "if (loc) {",
+              "  try {",
+              "    const u = new URL(loc);",
+              "    const code = u.searchParams.get('code');",
+              "    const state = u.searchParams.get('state');",
+              "    if (code) { pm.environment.set('auth_code', code); console.log('Captured auth_code', code); }",
+              "    if (state) { pm.environment.set('returned_state', state); }",
+              "    if (pm.environment.get('state') && state && pm.environment.get('state') !== state) { pm.test('State matches', function () { throw new Error('State mismatch'); }); } else { pm.test('State matches', function () { pm.expect(true).to.be.true; }); }",
+              "    pm.environment.set('pkce_session_id_confirm', pm.environment.get('pkce_session_id'));",
+              "  } catch (e) { console.warn('Failed to parse Location URL', e); }",
+              "} else { console.warn('No Location header found (maybe redirect followed unexpectedly)'); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/oauth/authorize?response_type=code&client_id={{client_id}}&redirect_uri={{redirect_uri}}&scope={{scope}}&state={{state}}&code_challenge={{code_challenge}}&code_challenge_method={{code_challenge_method}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["oauth","authorize"],
+          "query": [
+            {"key":"response_type","value":"code"},
+            {"key":"client_id","value":"{{client_id}}"},
+            {"key":"redirect_uri","value":"{{redirect_uri}}"},
+            {"key":"scope","value":"{{scope}}"},
+            {"key":"state","value":"{{state}}"},
+            {"key":"code_challenge","value":"{{code_challenge}}"},
+            {"key":"code_challenge_method","value":"{{code_challenge_method}}"}
+          ]
+        },
+        "description": "Authorize request with redirects disabled. Captures code & validates state and challenge integrity."
+      },
+      "protocolProfileBehavior": { "followRedirects": false },
+      "response": []
+    },
+    {
+      "name": "Set Auth Code (Manual / Optional)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": { "exec": [ "if(!pm.environment.get('auth_code')) { console.warn('auth_code not set yet'); }" ], "type": "text/javascript" }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "http://localhost:3000/placeholder", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["placeholder"] },
+        "description": "Optional fallback if auto-capture fails; manually set auth_code env var." 
+      },
+      "response": []
+    },
+    {
+      "name": "Step 3 - Exchange Code for Tokens",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "function base64url(b64){return b64.replace(/=+/g,'').replace(/\\+/g,'-').replace(/\\//g,'_');}",
+              "function sha256b64url(str){ const wa = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(str)); return base64url(CryptoJS.enc.Base64.stringify(wa)); }",
+              "['auth_code','code_verifier','code_challenge','state'].forEach(k=>{ if(!pm.environment.get(k)) throw new Error('Missing '+k+' run previous steps'); });",
+              "const expected = sha256b64url(pm.environment.get('code_verifier'));",
+              "if(pm.environment.get('code_challenge') !== expected) throw new Error('code_challenge mismatch – Reset Flow');",
+              "if(pm.environment.get('pkce_session_id') !== pm.environment.get('pkce_session_id_confirm')) throw new Error('Session continuity failure – redo authorization');"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) { const json = pm.response.json(); pm.environment.set('access_token', json.access_token); pm.environment.set('refresh_token', json.refresh_token); console.log('Stored access & refresh tokens'); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [ {"key":"Content-Type","value":"application/x-www-form-urlencoded"} ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {"key":"grant_type","value":"authorization_code"},
+            {"key":"code","value":"{{auth_code}}"},
+            {"key":"redirect_uri","value":"{{redirect_uri}}"},
+            {"key":"code_verifier","value":"{{code_verifier}}"},
+            {"key":"client_id","value":"{{client_id}}"}
+          ]
+        },
+        "url": { "raw": "http://localhost:3000/oauth/token", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["oauth","token"] },
+        "description": "Exchange the authorization code for tokens after validating unchanged PKCE values." 
+      },
+      "response": []
+    },
+    {
+      "name": "Step 4 - Refresh Token",
+      "request": {
+        "method": "POST",
+        "header": [ {"key":"Content-Type","value":"application/x-www-form-urlencoded"} ],
+        "body": { "mode": "urlencoded", "urlencoded": [ {"key":"grant_type","value":"refresh_token"}, {"key":"refresh_token","value":"{{refresh_token}}"} ] },
+        "url": { "raw": "http://localhost:3000/oauth/token", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["oauth","token"] },
+        "description": "Use stored refresh_token to obtain new access token." 
+      },
+      "response": []
+    },
+    {
+      "name": "Step 5 - Call Protected Stub (Example)",
+      "request": {
+        "method": "GET",
+        "header": [ {"key":"Authorization","value":"Bearer {{access_token}}"} ],
+        "url": { "raw": "http://localhost:3000/users/123", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["users","123"] },
+        "description": "Example using access_token. Server does not enforce auth on stub routes unless you add middleware." 
+      },
+      "response": []
+    }
+  ],
+  "event": [],
+  "variable": []
+}

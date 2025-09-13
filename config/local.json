@@ -1,0 +1,11 @@
+{
+  "port": 3000,
+  "logging": true,
+  "globalDelayMs": 0,
+  "cors": {
+    "enabled": true,
+    "origins": ["*"]
+  },
+  "stubsDir": "stubs",
+  "fallback": { "status": 404, "json": { "error": "No matching stub rule" } }
+}

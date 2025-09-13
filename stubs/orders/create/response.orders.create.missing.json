@@ -1,0 +1,10 @@
+{
+  "status": 400,
+  "body": {
+    "error": "missing_productId",
+    "message": "productId is required",
+    "received": {
+      "quantity": "{{body.quantity}}"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "order-create-missing-product",
+  "match": {
+    "method": "POST",
+    "path": "/orders",
+    "bodyContains": ["quantity"],
+    "query": {}
+  },
+  "response": { "file": "response.orders.create.missing.json", "delayMs": 0 }
+}

@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "body": {
+    "products": [
+      { "id": "p2", "name": "Advanced Gadget", "category": "premium" }
+    ],
+    "filter": "{{query.category}}"
+  }
+}

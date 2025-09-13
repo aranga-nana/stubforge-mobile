@@ -1,0 +1,5 @@
+{
+  "id": "oauth-authorization-code",
+  "match": { "method": "GET", "path": "/oauth/authorize", "query": {} },
+  "response": { "file": "response.authorization_code.json", "delayMs": 0 }
+}

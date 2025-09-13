@@ -1,0 +1,5 @@
+{
+  "id": "login-success",
+  "match": { "method": "POST", "path": "/auth/login", "bodyContains": ["username"], "query": { "mode": "success" } },
+  "response": { "file": "response.success.json", "delayMs": 50 }
+}

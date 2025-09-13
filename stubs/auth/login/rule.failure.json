@@ -1,0 +1,5 @@
+{
+  "id": "login-failure",
+  "match": { "method": "POST", "path": "/auth/login", "bodyContains": ["username"], "query": {} },
+  "response": { "file": "response.failure.json", "delayMs": 50 }
+}

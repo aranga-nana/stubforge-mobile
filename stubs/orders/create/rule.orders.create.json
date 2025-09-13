@@ -1,0 +1,10 @@
+{
+  "id": "order-create-success",
+  "match": {
+    "method": "POST",
+    "path": "/orders",
+    "bodyContains": ["productId"],
+    "query": {}
+  },
+  "response": { "file": "response.orders.create.success.json", "delayMs": 0 }
+}

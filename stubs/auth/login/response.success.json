@@ -1,0 +1,4 @@
+{
+  "status": 200,
+  "body": { "token": "static-login-token", "user": { "id": "u123", "username": "{{body.username}}" } }
+}

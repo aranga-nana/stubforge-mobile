@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "delayMs": 0,
+  "body": {
+    "id": "{{params.id}}",
+    "username": "dynamic_user_{{params.id}}",
+    "email": "user{{params.id}}@example.com"
+  }
+}

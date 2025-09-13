@@ -1,0 +1,9 @@
+{
+  "status": 201,
+  "body": {
+    "orderId": "ord_{{Date.now}}",
+    "productId": "{{body.productId}}",
+    "quantity": "{{body.quantity}}",
+    "status": "created"
+  }
+}
