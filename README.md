@@ -195,6 +195,26 @@ curl -X POST http://localhost:3000/orders -H 'Content-Type: application/json' -d
 ## Config
 Edit `config/local.json` for port, CORS, global delay, fallback.
 
+## Configurable OAuth Paths
+You can redefine all OAuth-related endpoints in `config/local.json` under `oauth`:
+```json
+"oauth": {
+  "basePath": "/v2/oauth/abc",
+  "authorizePath": "/v2/oauth/abc/authorize",
+  "tokenPath": "/v2/oauth/abc/token",
+  "jwksPath": "/custom/.well-known/jwks.json",
+  "publicKeyPath": "/custom/.well-known/public.pem"
+}
+```
+Only specify what you need; unspecified fields fall back to defaults:
+- basePath default: `/oauth`
+- authorizePath default: `<basePath>/authorize`
+- tokenPath default: `<basePath>/token`
+- jwksPath default: `/.well-known/jwks.json`
+- publicKeyPath default: `/.well-known/public.pem`
+
+After changing paths, restart the server and update any Postman collection or mobile client code to use the new endpoints.
+
 That's it. Keep only what you need.
 
 ## Docker
