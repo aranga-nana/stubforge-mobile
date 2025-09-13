@@ -7,5 +7,12 @@
     "origins": ["*"]
   },
   "stubsDir": "stubs",
+  "oauth": {
+    "basePath": "/oauth",
+    "authorizePath": "/oauth/authorize",
+    "tokenPath": "/oauth/token",
+    "jwksPath": "/.well-known/jwks.json",
+    "publicKeyPath": "/.well-known/public.pem"
+  },
   "fallback": { "status": 404, "json": { "error": "No matching stub rule" } }
 }

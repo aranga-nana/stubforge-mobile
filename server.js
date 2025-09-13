@@ -11,6 +11,17 @@ require('dotenv').config();
 const CONFIG_FILE = process.env.CONFIG || path.join(__dirname, 'config', 'local.json');
 const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
 
+// New: derive OAuth path configuration
+function joinPath(base, segment) {
+  return base.replace(/\/+$/, '') + '/' + segment.replace(/^\/+/, '');
+}
+const oauthCfg = config.oauth || {};
+const OAUTH_BASE_PATH = oauthCfg.basePath || '/oauth';
+const OAUTH_AUTHORIZE_PATH = oauthCfg.authorizePath || joinPath(OAUTH_BASE_PATH, 'authorize');
+const OAUTH_TOKEN_PATH = oauthCfg.tokenPath || joinPath(OAUTH_BASE_PATH, 'token');
+const OAUTH_JWKS_PATH = oauthCfg.jwksPath || '/.well-known/jwks.json';
+const OAUTH_PUBLIC_PEM_PATH = oauthCfg.publicKeyPath || '/.well-known/public.pem';
+
 // New: load all rule files from stubs directory recursively
 function loadStubRules(stubsDir) {
   const root = path.join(__dirname, stubsDir);
@@ -152,8 +163,8 @@ if (publicKey) {
 }
 
 if (jwkCache) {
-  app.get('/.well-known/jwks.json', (req, res) => res.json(jwkCache));
-  app.get('/.well-known/public.pem', (req, res) => res.type('text/plain').send(publicKey.toString()));
+  app.get(OAUTH_JWKS_PATH, (req, res) => res.json(jwkCache));
+  app.get(OAUTH_PUBLIC_PEM_PATH, (req, res) => res.type('text/plain').send(publicKey.toString()));
 }
 
 // In-memory refresh token store (only if using opaque tokens) – here we use JWT refresh tokens, so map optional.
@@ -187,7 +198,7 @@ function signRefreshToken(claims, ttlSeconds = 7 * 24 * 3600) {
 }
 
 // Authorization endpoint (simplified, auto-approves user)
-app.get('/oauth/authorize', (req, res) => {
+app.get(OAUTH_AUTHORIZE_PATH, (req, res) => {
   const { response_type, client_id, redirect_uri, scope = 'basic', state, code_challenge, code_challenge_method = 'plain' } = req.query;
   if (response_type !== 'code') return res.status(400).json({ error: 'unsupported_response_type' });
   if (!client_id || !redirect_uri) return res.status(400).json({ error: 'invalid_request', error_description: 'client_id and redirect_uri required' });
@@ -204,12 +215,12 @@ app.get('/oauth/authorize', (req, res) => {
   return res.redirect(302, `${redirect_uri}${redirect_uri.includes('?') ? '&' : '?'}${qp.toString()}`);
 });
 // Optional POST support
-app.post('/oauth/authorize', express.urlencoded({ extended: false }), (req, res) => {
+app.post(OAUTH_AUTHORIZE_PATH, express.urlencoded({ extended: false }), (req, res) => {
   req.query = { ...req.body }; // normalize
   return app._router.handle(req, res, () => {}); // re-dispatch as GET logic
 });
 // OAuth2 token endpoint (form-urlencoded or JSON)
-app.post('/oauth/token', (req, res) => {
+app.post(OAUTH_TOKEN_PATH, (req, res) => {
   if (!privateKey) return res.status(500).json({ error: 'server_not_configured', error_description: 'JWT keys missing' });
   const grantType = req.body.grant_type || req.body.grantType;
   const scope = (req.body.scope || 'basic').split(/\s+/).filter(Boolean).join(' ');
@@ -324,7 +335,7 @@ app.use(async (req, res, next) => {
     let body = interpolate(raw.body, context);
 
     // JWT signing logic for OAuth token endpoint
-    if (privateKey && req.path === '/oauth/token' && body && body.access_token) {
+    if (privateKey && req.path === OAUTH_TOKEN_PATH && body && body.access_token) {
       const nowSec = Math.floor(Date.now() / 1000);
       const payload = {
         iss: 'stub-server',
@@ -368,4 +379,7 @@ app.listen(port, () => {
   console.log(`Config: ${CONFIG_FILE}`);
   console.log(`Stubs dir: ${config.stubsDir || 'stubs'}`);
   console.log(`Rules loaded: ${rules.length}`);
+  console.log(`OAuth authorize path: ${OAUTH_AUTHORIZE_PATH}`);
+  console.log(`OAuth token path: ${OAUTH_TOKEN_PATH}`);
+  console.log(`JWKS path: ${OAUTH_JWKS_PATH}`);
 });
