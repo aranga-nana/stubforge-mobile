@@ -126,7 +126,7 @@ docker run -p 3000:3000 \
 ### Build Image
 ```bash
 docker build -t stubforge/mobile:latest .
-docker build -t stubforge/mobile:1.2.0 .
+docker build -t stubforge/mobile:1.3.0 .
 ```
 
 ### Push to Docker Hub
@@ -138,7 +138,7 @@ docker login
 docker push stubforge/mobile:latest
 
 # Push versioned
-docker push stubforge/mobile:1.2.0
+docker push stubforge/mobile:1.3.0
 ```
 
 ### Multi-platform Build (Optional)
@@ -149,7 +149,7 @@ docker buildx create --use
 # Build for multiple platforms
 docker buildx build --platform linux/amd64,linux/arm64 \
   -t stubforge/mobile:latest \
-  -t stubforge/mobile:1.2.0 \
+  -t stubforge/mobile:1.3.0 \
   --push .
 ```
 
