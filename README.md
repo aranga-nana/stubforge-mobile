@@ -203,6 +203,23 @@ docker build -t aranga/stubforge-mobile:dev .
 docker run --rm -p 3000:3000 aranga/stubforge-mobile:dev
 ```
 
+### Multi-platform Builds
+
+Images are published for both `linux/amd64` and `linux/arm64` using Docker Buildx. A GitHub Actions workflow (`docker-multi-platform.yml`) automatically builds and pushes multi-arch images on version tag pushes (e.g., `v1.3.3`).
+
+Local multi-platform build & push:
+```bash
+docker buildx create --use --name sfmp || docker buildx use sfmp
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t aranga/stubforge-mobile:1.3.3 \
+  -t aranga/stubforge-mobile:latest \
+  --push .
+ 
+# Or use helper script (auto-detects version from package.json)
+chmod +x scripts/build-multi.sh
+./scripts/build-multi.sh 1.3.3
+```
+
 ### 📦 docker-compose (Copy & Paste)
 
 #### Minimal (quick start)

@@ -153,6 +153,25 @@ docker buildx build --platform linux/amd64,linux/arm64 \
   --push .
 ```
 
+### GitHub Actions (Automated Multi-platform)
+
+This repo includes `.github/workflows/docker-multi-platform.yml` which automatically builds and pushes `linux/amd64` and `linux/arm64` images when you push a git tag like `v1.3.3`.
+
+1. Configure Docker Hub credentials in repository secrets:
+  - `DOCKERHUB_USERNAME`
+  - `DOCKERHUB_TOKEN` (Create a Docker Hub access token)
+2. Create and push a tag:
+```bash
+git tag -a v1.3.3 -m "StubForge Mobile 1.3.3"
+git push origin v1.3.3
+```
+3. Workflow publishes:
+  - `aranga/stubforge-mobile:1.3.3`
+  - `aranga/stubforge-mobile:latest`
+
+Manual dispatch is also supported (Actions tab -> Run workflow) with a `version` input.
+
+
 ## Security Considerations
 
 ### Development Keys Warning

@@ -2,6 +2,19 @@
 
 All notable changes to **StubForge Mobile** will be documented in this file.
 
+## [1.3.3] - 2025-09-13 - Multi-platform Docker Builds
+### Added
+- **Multi-platform Images**: Official `linux/amd64` + `linux/arm64` image publishing via Docker Buildx
+- **GitHub Actions Workflow**: `docker-multi-platform.yml` builds & pushes on version tag (`v*.*.*`)
+- **Documentation**: README & DOCKER guide updated with buildx usage and workflow instructions
+
+### Changed
+- **Dockerfile**: Added clarifying comments for layer caching and multi-arch readiness
+
+### Notes
+- No application runtime changes; infrastructure & distribution enhancement only
+
+
 ## [1.3.2] - 2025-09-13 - Docker Compose Examples
 ### Added
 - **README Enhancements**: Added minimal and extended `docker-compose` examples with volumes, healthcheck, and common lifecycle commands

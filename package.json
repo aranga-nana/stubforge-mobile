@@ -1,6 +1,6 @@
 {
   "name": "stubforge-mobile",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Configurable stub server with built-in OAuth2 for mobile development",
   "main": "server.js",
   "scripts": {
