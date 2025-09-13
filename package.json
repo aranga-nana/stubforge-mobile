@@ -1,7 +1,7 @@
 {
-  "name": "ios-stub-server",
-  "version": "1.3.0",
-  "description": "Minimal config-driven local stub server (per-endpoint rule folders) with JWT OAuth2 tokens",
+  "name": "oauth2-stubkit-mobile",
+  "version": "1.4.0",
+  "description": "Local OAuth2 Authorization Code + PKCE + JWT stub server with rule-based mock APIs for mobile development",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
