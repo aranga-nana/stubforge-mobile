@@ -2,7 +2,7 @@
 
 All notable changes to **StubForge Mobile** will be documented in this file.
 
-## [1.3.0-docker.1] - 2025-09-13 - Docker Hub Ready (Feature Branch)
+## [1.3.0] - 2025-09-13 - Docker Hub & Volume Support
 ### Added - Docker Volume Support & Hub Deployment
 - **Docker Volume Support** - External mounting for custom stubs and keys without rebuilding images
 - **Smart Default Handling** - Built-in samples automatically used when no custom files provided
