@@ -203,6 +203,68 @@ docker build -t aranga/stubforge-mobile:dev .
 docker run --rm -p 3000:3000 aranga/stubforge-mobile:dev
 ```
 
+### 📦 docker-compose (Copy & Paste)
+
+#### Minimal (quick start)
+```yaml
+version: "3.9"
+services:
+  stubforge:
+    image: aranga/stubforge-mobile:latest
+    container_name: stubforge-mobile
+    ports:
+      - "3000:3000"
+```
+
+#### With Persistent Data & Config
+```yaml
+version: "3.9"
+services:
+  stubforge:
+  image: aranga/stubforge-mobile:1.3.2
+    container_name: stubforge-mobile
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      # Example: enable production-like mode
+      # - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./stubs:/app/stubs
+      - ./keys:/app/keys
+      - ./config:/app/config
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/.well-known/openid_configuration"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+```
+
+#### Compose Commands
+```bash
+# Start in detached mode
+docker compose up -d
+
+# Tail logs
+docker compose logs -f
+
+# Recreate after changes
+docker compose up -d --build
+
+# Stop (keep containers)
+docker compose stop
+
+# Stop and remove containers
+docker compose down
+
+# Remove everything (containers, volumes, networks)
+docker compose down -v
+```
+
+> Tip: Pin to a specific version (e.g., `1.3.2`) in CI; use `latest` locally for convenience.
+
 ## 📚 Technical Details
 
 <details>

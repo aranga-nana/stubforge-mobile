@@ -2,6 +2,15 @@
 
 All notable changes to **StubForge Mobile** will be documented in this file.
 
+## [1.3.2] - 2025-09-13 - Docker Compose Examples
+### Added
+- **README Enhancements**: Added minimal and extended `docker-compose` examples with volumes, healthcheck, and common lifecycle commands
+
+### Notes
+- Documentation-only patch (no runtime code changes)
+- Encourages best-practice pinning (`1.3.1` at time of addition) vs `latest`
+
+
 ## [1.3.1] - 2025-09-13 - Docker Namespace & Badges
 ### Changed
 - **Docker Image Namespace**: Updated all documentation and examples from `stubforge/mobile` to `aranga/stubforge-mobile` (official Docker Hub repository)
