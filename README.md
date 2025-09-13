@@ -1,314 +1,401 @@
-# oauth2-stubkit-mobile
+# StubForge Mobile
 
-![PKCE Mobile Ready](https://img.shields.io/badge/Mobile%20OAuth2-PKCE%20Ready-brightgreen?style=for-the-badge) ![JWT](https://img.shields.io/badge/Tokens-JWT%20RS256-blue?style=for-the-badge) ![Stubs](https://img.shields.io/badge/Config-Stub%20Rules-lightgrey?style=for-the-badge) ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-green?style=for-the-badge) ![Release](https://img.shields.io/github/v/tag/aranga-nana/oauth2-stubkit-mobile?label=release&style=for-the-badge)
+<div align="center">
+  <img src="docs/assets/stub-forge-mobile.png" alt="StubForge Mobile Logo" width="200" height="200">
+</div>
 
-Spin up a local, config-driven OAuth2 Authorization Code (PKCE) + JWT stub API in under 60 seconds for rapid iOS & Android mobile app development. NOT for production; purpose-built for local dev, integration testing, and iterative UI flows.
+![Mobile Development](https://img.shields.io/badge/Mobile%20Development-Made%20Easy-brightgreen?style=for-the-badge) ![Configurable Stubs](https://img.shields.io/badge/Stubs-Configurable-blue?style=for-the-badge) ![OAuth2 Built-in](https://img.shields.io/badge/OAuth2-Built--in-lightgrey?style=for-the-badge) ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-green?style=for-the-badge)
 
-Key features:
-- Authorization Code + PKCE (S256) plus password, client_credentials & refresh grants
-- RS256-signed JWT access & refresh tokens with JWKS (`/.well-known/jwks.json`)
-- Configurable stub rule folders (method/path/query/body matching, templating, delays)
-- Query + body variant examples included (products, orders)
-- Hot reload of rules (set `WATCH_RULES=1`)
-- Postman collection automates full PKCE flow (auto-captures auth code, integrity checks)
-- Safe key handling (git-ignored PEMs; instructions included)
-- Docker image & rule validation script
-- Minimal dependencies; fast startup
+**Configurable stub server with built-in OAuth2 for mobile development.** Forge perfect API responses and OAuth2 flows for your iOS & Android apps in minutes, not days.
 
-## Demo (GIF)
-> Placeholder: Add `docs/media/pkce-flow.gif` showing Postman auto PKCE (Steps 1-3). To record: use screen capture, optimize with `gifski` or `ffmpeg` + `imagemagick`, then commit under `docs/media/` and update path below.
+## 🚀 Why Mobile Developers Love StubForge
 
-![PKCE Flow Demo](docs/media/pkce-flow.gif)
+**Stop waiting for backends.** Start building mobile apps immediately with:
 
-## Why
-Standing up a full identity provider + backend just to iterate on mobile auth UX is slow. This project gives you:
-- Realistic OAuth2 Authorization Code + PKCE exchange (S256)
-- Signed JWTs you can decode & validate in app (public key / JWKS provided)
-- Dynamic mock API responses selected by rules (query/body driven) for rapid state simulation
-- Simple folder-based rules you can version with your app
-- No external services required; works fully offline
+- ✅ **Configurable API Stubs** - Create any API response you need
+- ✅ **Built-in OAuth2** - Every flow your mobile app needs (PKCE, Device, Implicit, etc.)
+- ✅ **Real JWT Tokens** - RS256 signed tokens your app can actually validate
+- ✅ **Smart Response Rules** - Dynamic responses based on your request data
+- ✅ **Zero Configuration** - Works out of the box, customize when needed
+- ✅ **Mobile-First Design** - Built specifically for iOS & Android development workflows
+- ✅ **Offline Development** - No internet required, perfect for flights and coffee shops
 
-## Quick Start
-```
-# Install & run
+## 🎯 Perfect For
+
+- **Mobile App Development** - Test authentication flows without backend dependency
+- **Prototyping** - Quickly demo mobile apps with realistic auth behavior  
+- **Integration Testing** - Validate your OAuth2 implementation against all standard flows
+- **Learning OAuth2** - Hands-on experience with real flows and tokens
+- **Conference Demos** - Reliable offline demo environment
+
+## ⚡ Quick Start (60 seconds)
+
+```bash
+# 1. Clone and install
+git clone https://github.com/aranga-nana/stubforge-mobile.git
+cd stubforge-mobile
 npm install
-npm run dev
-# or with Docker (auto key gen if absent)
-docker build -t oauth2-stubkit-mobile .
-docker run --rm -p 3000:3000 -v "$PWD/keys:/app/keys" oauth2-stubkit-mobile
-```
-Server: http://localhost:3000
-Health: http://localhost:3000/health
-JWKS: http://localhost:3000/.well-known/jwks.json
 
-## iOS Swift (Authorization Code Exchange Example)
-```swift
-let base = URL(string: "http://localhost:3000")!
-let codeVerifier = "<your generated verifier>"
-let codeChallenge = /* BASE64URL(SHA256(verifier)) */
-let authorize = URL(string: "/oauth/authorize?response_type=code&client_id=mobile-app&redirect_uri=http://localhost:3000/callback&scope=openid%20profile&state=abc123&code_challenge=\(codeChallenge)&code_challenge_method=S256", relativeTo: base)!
-URLSession.shared.dataTask(with: authorize) { _, resp, _ in
-    if let http = resp as? HTTPURLResponse, let loc = http.value(forHTTPHeaderField: "Location") {
-        let code = URLComponents(string: loc)?.queryItems?.first { $0.name == "code" }?.value ?? ""
-        var req = URLRequest(url: base.appendingPathComponent("/oauth/token"))
-        req.httpMethod = "POST"
-        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        let body = "grant_type=authorization_code&code=\(code)&redirect_uri=http://localhost:3000/callback&code_verifier=\(codeVerifier)&client_id=mobile-app"
-        req.httpBody = body.data(using: .utf8)
-        URLSession.shared.dataTask(with: req) { data, _, _ in
-            if let d = data { print(String(data: d, encoding: .utf8)!) }
-        }.resume()
-    }
-}.resume()
-```
-
-## Android Kotlin (OkHttp)
-```kotlin
-val client = OkHttpClient()
-val base = "http://10.0.2.2:3000" // Android emulator -> host
-val verifier = "<generated>"
-val challenge = /* base64url(sha256(verifier)) */
-val authUrl = HttpUrl.parse("$base/oauth/authorize")!!.newBuilder()
-    .addQueryParameter("response_type","code")
-    .addQueryParameter("client_id","mobile-app")
-    .addQueryParameter("redirect_uri","http://localhost:3000/callback")
-    .addQueryParameter("scope","openid profile")
-    .addQueryParameter("state","abc123")
-    .addQueryParameter("code_challenge", challenge)
-    .addQueryParameter("code_challenge_method","S256")
-    .build()
-val authReq = Request.Builder().url(authUrl).build()
-client.newCall(authReq).execute().use { resp ->
-    val location = resp.header("Location") ?: return@use
-    val code = HttpUrl.parse(location)!!.queryParameter("code") ?: return@use
-    val form = FormBody.Builder()
-        .add("grant_type","authorization_code")
-        .add("code", code)
-        .add("redirect_uri","http://localhost:3000/callback")
-        .add("code_verifier", verifier)
-        .add("client_id","mobile-app")
-        .build()
-    val tokenReq = Request.Builder().url("$base/oauth/token").post(form).build()
-    client.newCall(tokenReq).execute().use { tokenResp ->
-        println(tokenResp.body()!!.string())
-    }
-}
-```
-
-## OAuth2 PKCE Flow (S256)
-1. Generate `code_verifier` (43–128 chars allowed: A-Z a-z 0-9 -._~).
-2. Compute `code_challenge = BASE64URL(SHA256(code_verifier))`.
-3. Authorize:
-```
-GET /oauth/authorize?response_type=code&client_id=mobile-app&redirect_uri=http://localhost:3000/callback&scope=openid%20profile&state=abc123&code_challenge=...&code_challenge_method=S256
-```
-4. Copy `code` from redirect URL.
-5. Token exchange:
-```
-curl -X POST http://localhost:3000/oauth/token \
- -H 'Content-Type: application/x-www-form-urlencoded' \
- -d 'grant_type=authorization_code&code=CODE&redirect_uri=http://localhost:3000/callback&code_verifier=ORIGINAL_VERIFIER&client_id=mobile-app'
-```
-Returns `access_token` + `refresh_token` (JWT, RS256). JWKS: `/.well-known/jwks.json`.
-
-## RSA Keys (Do Not Commit)
-Directory `keys/` is tracked but key files are git‑ignored. Create locally:
-```
+# 2. Generate keys (first time only)
 mkdir -p keys
 openssl genrsa -out keys/private.pem 2048
 openssl rsa -in keys/private.pem -pubout -out keys/public.pem
-```
-Verify headers:
-```
-head -n2 keys/private.pem
-head -n2 keys/public.pem
-```
-If you rotate keys, just regenerate both. Never commit the actual `.pem` files; only `keys/.gitkeep` stays in Git.
 
-## Other Grants
-Password:
-```
-curl -X POST http://localhost:3000/oauth/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password&username=alice&password=secret&scope=basic'
-```
-Client Credentials:
-```
-curl -X POST http://localhost:3000/oauth/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=client_credentials&client_id=svc&scope=service'
-```
-Refresh:
-```
-curl -X POST http://localhost:3000/oauth/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=refresh_token&refresh_token=REFRESH_JWT'
+# 3. Start the server
+npm run dev
 ```
 
-## Templated Stub Rules
-Rules live under `stubs/` and auto-load. Each rule file: `rule*.json` with:
+**That's it!** Your mobile development server is running at http://localhost:3000
+
+## 📱 Mobile Integration Examples
+
+### iOS Swift (Complete PKCE Flow)
+```swift
+import Foundation
+import CryptoKit
+
+// 1. Generate PKCE parameters
+let verifier = generateCodeVerifier()
+let challenge = Data(SHA256.hash(data: verifier.data(using: .utf8)!))
+    .base64URLEncodedString()
+
+// 2. Authorization request
+let authURL = URL(string: "http://localhost:3000/oauth/authorize?response_type=code&client_id=mobile-app&redirect_uri=myapp://callback&scope=openid profile&code_challenge=\(challenge)&code_challenge_method=S256")!
+
+// Handle the redirect and extract the code, then:
+// 3. Token exchange
+exchangeCodeForTokens(code: authCode, verifier: verifier)
 ```
-{
-  "id": "unique-id",
-  "match": { "method": "GET", "path": "/products", "query": {"category":"premium"}, "bodyContains": ["field"] },
-  "response": { "file": "response.file.json", "delayMs": 0 }
+
+### Android Kotlin (OkHttp + PKCE)
+```kotlin
+// Perfect for Android development with emulator support
+val baseUrl = "http://10.0.2.2:3000" // Auto-routes to host machine
+
+class OAuth2Helper {
+    suspend fun performPKCEFlow(): TokenResponse {
+        val verifier = generateCodeVerifier()
+        val challenge = verifier.sha256().base64UrlEncode()
+        
+        // Authorization + Token exchange
+        return exchangeCodeForToken(verifier, challenge)
+    }
 }
 ```
-Response file:
-```
+
+## 🎮 Interactive Testing with Postman
+
+Import the included Postman collection for **automated OAuth2 flow testing**:
+
+1. **Import**: `postman/OAuth2-Complete-Flows.postman_collection.json`
+2. **Set Environment**: `postman/OAuth2-StubKit-Mobile-Local.postman_environment.json`  
+3. **Run Any Flow**: Authorization Code, Device Flow, Client Credentials, etc.
+
+**Auto-magic features:**
+- ✨ Automatic PKCE code generation and verification
+- ✨ Token extraction and validation
+- ✨ Flow state management across requests
+- ✨ JWT decoding and claims verification
+
+## 🔧 Smart API Stubs
+
+Beyond OAuth2, create realistic API responses for your mobile app:
+
+```javascript
+// stubs/users/profile/rule.json
+{
+  "match": { "method": "GET", "path": "/api/user/profile" },
+  "response": { "file": "response.json" }
+}
+
+// stubs/users/profile/response.json  
 {
   "status": 200,
-  "body": { "value": "{{query.category}}", "id": "{{params.id}}", "input": "{{body.productId}}", "ts": "{{Date.now}}" }
+  "body": {
+    "id": "{{query.userId}}",
+    "name": "Mobile Developer",
+    "avatar": "https://avatar.example.com/{{query.userId}}.jpg",
+    "lastLogin": "{{Date.now}}"
+  }
 }
 ```
-Supported template sources: `params.*`, `query.*`, `body.*`, `Date.now`.
 
-## Query Param Variant Example
-Default list:
-- `stubs/products/list/rule.products.json` -> `/products`
-Filtered list when `?category=premium`:
-- `stubs/products/list-filtered/rule.products.filtered.json`
+**Dynamic responses** based on query parameters, request body, headers, and more!
 
-Test:
-```
-curl http://localhost:3000/products
-curl http://localhost:3000/products?category=premium
-```
+## 🎯 All OAuth2 Flows Supported
 
-## Request Body Variant Example
-Order create success:
-- `stubs/orders/create/rule.orders.create.json` (body contains `productId`)
-Order create missing product:
-- `stubs/orders/create/rule.orders.create.missing.json` (only sees `quantity`)
+**Every OAuth2 flow your mobile app might need:**
 
-Test:
-```
-curl -X POST http://localhost:3000/orders -H 'Content-Type: application/json' -d '{"productId":"p1","quantity":2}'
-curl -X POST http://localhost:3000/orders -H 'Content-Type: application/json' -d '{"quantity":2}'
-```
+| Flow | Use Case | Mobile Example |
+|------|----------|----------------|
+| **Authorization Code + PKCE** | Standard mobile auth | iOS/Android app login |
+| **Device Flow** | Smart TV, IoT devices | Apple TV app, Smart display |
+| **Client Credentials** | Service-to-service | Background data sync |
+| **Implicit Flow** | Legacy web views | Embedded browser auth |
+| **JWT Bearer** | Service accounts | Server-side mobile backend |
+| **Refresh Token** | Token renewal | Seamless re-authentication |
 
-## Add New Endpoint
-1. Create folder under `stubs/...`.
-2. Add `rule.something.json` with match criteria.
-3. Add `response.something.json` with `status` + `body`.
-4. Restart or run with `WATCH_RULES=1` for auto reload.
+**Plus OpenID Connect:** ID tokens, UserInfo endpoint, Discovery document - everything for modern mobile authentication.
 
-## Troubleshooting
-- 404: No rule matched (check path/method)
-- PKCE invalid_grant: mismatch verifier vs challenge or reused code
-- JWT signing error: regenerate keys (see RSA Keys)
+## ⚙️ Customizable for Your Needs
 
-## Config
-Edit `config/local.json` for port, CORS, global delay, fallback.
-
-## Configurable OAuth2 Endpoints
-All OAuth2 and OpenID Connect endpoints are fully configurable in `config/local.json`. This allows you to match your existing API structure or test different endpoint configurations:
+**All endpoints are configurable** - adapt to match your existing API structure:
 
 ```json
 {
+  "oauth": {
+    "basePath": "/auth",           // Change from /oauth to /auth
+    "tokenPath": "/auth/token",    // Custom token endpoint
+    "userinfoPath": "/auth/me"     // Custom userinfo endpoint
+  }
+}
+```
+
+**Perfect for:**
+- Testing against different OAuth2 server configurations
+- Matching your production API structure
+- Educational purposes and OAuth2 learning
+
+## 🛠️ Advanced Features
+
+- **🔄 Hot Reload** - Modify API responses without restart (`WATCH_RULES=1`)
+- **🐳 Docker Ready** - Containerized deployment with auto key generation
+- **🔐 Security Testing** - Test different client authentication methods
+- **📊 Request Logging** - Debug mobile app requests in real-time
+- **⏱️ Response Delays** - Simulate network conditions and timeouts
+- **🎭 Multiple Environments** - Different configs for different test scenarios
+
+## 🐳 Docker Deployment
+
+Perfect for CI/CD and team development:
+
+```bash
+# Build and run with Docker
+docker build -t oauth2-stubkit-mobile .
+docker run --rm -p 3000:3000 oauth2-stubkit-mobile
+
+# With persistent keys
+docker run --rm -p 3000:3000 -v "$PWD/keys:/app/keys" oauth2-stubkit-mobile
+```
+
+## 📚 Technical Details
+
+<details>
+<summary><strong>🔑 RSA Key Management</strong></summary>
+
+The server uses RSA keys for JWT signing. Keys are git-ignored for security:
+
+```bash
+# Generate keys (first time only)
+mkdir -p keys
+openssl genrsa -out keys/private.pem 2048
+openssl rsa -in keys/private.pem -pubout -out keys/public.pem
+
+# Verify key format
+head -n2 keys/private.pem  # Should show: -----BEGIN RSA PRIVATE KEY-----
+head -n2 keys/public.pem   # Should show: -----BEGIN PUBLIC KEY-----
+```
+
+**Important:** Never commit `.pem` files to git. Only `keys/.gitkeep` is tracked.
+</details>
+
+<details>
+<summary><strong>🔧 Manual OAuth2 Testing (curl examples)</strong></summary>
+
+### Authorization Code + PKCE Flow
+```bash
+# 1. Generate PKCE verifier and challenge
+code_verifier="YOUR_GENERATED_VERIFIER"
+code_challenge=$(echo -n $code_verifier | shasum -a 256 | cut -d' ' -f1 | xxd -r -p | base64 | tr '+/' '-_' | tr -d '=')
+
+# 2. Authorization request (browser)
+curl "http://localhost:3000/oauth/authorize?response_type=code&client_id=mobile-app&redirect_uri=http://localhost:3000/callback&scope=openid profile&code_challenge=$code_challenge&code_challenge_method=S256"
+
+# 3. Token exchange (extract code from redirect)
+curl -X POST http://localhost:3000/oauth/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d "grant_type=authorization_code&code=EXTRACTED_CODE&redirect_uri=http://localhost:3000/callback&code_verifier=$code_verifier&client_id=mobile-app"
+```
+
+### Other Grant Types
+```bash
+# Password Grant
+curl -X POST http://localhost:3000/oauth/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=password&username=alice&password=secret&scope=basic'
+
+# Client Credentials
+curl -X POST http://localhost:3000/oauth/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=client_credentials&client_id=svc&scope=service'
+
+# Refresh Token
+curl -X POST http://localhost:3000/oauth/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=refresh_token&refresh_token=YOUR_REFRESH_JWT'
+
+# Device Flow (step 1)
+curl -X POST http://localhost:3000/oauth/device_authorization \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'client_id=device-app&scope=basic'
+
+# Device Flow (step 2 - polling)
+curl -X POST http://localhost:3000/oauth/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=DEVICE_CODE'
+```
+</details>
+
+## 🎨 Creating Custom API Stubs
+
+Build realistic API responses for your mobile app testing:
+
+### Basic Stub Structure
+```json
+// stubs/products/list/rule.json
+{
+  "id": "products-list",
+  "match": { 
+    "method": "GET", 
+    "path": "/api/products",
+    "query": {"category": "electronics"}
+  },
+  "response": { "file": "response.json", "delayMs": 100 }
+}
+```
+
+```json
+// stubs/products/list/response.json
+{
+  "status": 200,
+  "body": {
+    "products": [
+      {
+        "id": "{{query.category}}-001",
+        "name": "Mobile Phone",
+        "price": 699,
+        "category": "{{query.category}}",
+        "lastUpdated": "{{Date.now}}"
+      }
+    ],
+    "total": 1,
+    "requestedCategory": "{{query.category}}"
+  }
+}
+```
+
+### Template Variables
+**Dynamic content** using template variables:
+- `{{query.paramName}}` - URL query parameters
+- `{{params.id}}` - Path parameters (e.g., `/users/:id`)  
+- `{{body.fieldName}}` - Request body fields
+- `{{Date.now}}` - Current timestamp
+
+### Multiple Response Variants
+```bash
+# Different responses based on query parameters
+curl http://localhost:3000/api/products                    # Default response
+curl http://localhost:3000/api/products?category=premium   # Premium category response
+```
+
+### Request Body Variants
+```json
+// Match requests containing specific body fields
+{
+  "match": {
+    "method": "POST",
+    "path": "/api/orders",
+    "bodyContains": ["productId", "quantity"]
+  }
+}
+```
+
+## 🔧 Configuration Options
+
+Edit `config/local.json` to customize:
+
+```json
+{
+  "port": 3000,
+  "logging": true,
+  "globalDelayMs": 0,
+  "allowDefaultClient": false,  // Security: require explicit client auth
+  "cors": {
+    "enabled": true,
+    "origins": ["*"]
+  },
   "oauth": {
     "basePath": "/oauth",
     "authorizePath": "/oauth/authorize",
-    "tokenPath": "/oauth/token", 
+    "tokenPath": "/oauth/token",
     "devicePath": "/oauth/device_authorization",
     "introspectPath": "/oauth/introspect",
     "revokePath": "/oauth/revoke",
-    "userinfoPath": "/oauth/userinfo",
-    "jwksPath": "/.well-known/jwks.json",
-    "publicKeyPath": "/.well-known/public.pem",
-    "discoveryPath": "/.well-known/openid_configuration",
-    "deviceVerificationPath": "/device",
-    "deviceVerifyPath": "/device/verify"
+    "userinfoPath": "/oauth/userinfo"
   }
 }
 ```
 
-### Available Endpoints
-| Endpoint | Purpose | Configurable Path |
-|----------|---------|-------------------|
-| Authorization | OAuth2 authorization endpoint | `authorizePath` |
-| Token | Token exchange endpoint | `tokenPath` |
-| Device Authorization | Device flow initiation | `devicePath` |
-| Token Introspection | Validate tokens | `introspectPath` |
-| Token Revocation | Revoke tokens | `revokePath` |
-| UserInfo | OpenID Connect user info | `userinfoPath` |
-| Discovery | OpenID Connect discovery | `discoveryPath` |
-| JWKS | JSON Web Key Set | `jwksPath` |
-| Public Key | RSA public key | `publicKeyPath` |
-| Device Verification | Device code verification page | `deviceVerificationPath` |
-| Device Verify | Device code form handler | `deviceVerifyPath` |
+### Key Configuration Options
+- **`allowDefaultClient`** - Set to `true` to allow fallback authentication (not recommended for production-like testing)
+- **`globalDelayMs`** - Add artificial delay to all responses (simulate network latency)
+- **All OAuth2 endpoints** - Fully customizable paths to match your API structure
+- **CORS settings** - Configure for your mobile app's requirements
 
-### Example Custom Configuration
-```json
-{
-  "oauth": {
-    "basePath": "/auth",
-    "authorizePath": "/auth/authorize",
-    "tokenPath": "/auth/token",
-    "userinfoPath": "/auth/me",
-    "jwksPath": "/auth/jwks",
-    "discoveryPath": "/auth/.well-known/openid_configuration"
-  }
-}
+## 🚀 Quick Mobile Development Tips
+
+### iOS Development
+```bash
+# Use localhost for iOS Simulator
+let baseURL = "http://localhost:3000"
+
+# For device testing, use your machine's IP
+let baseURL = "http://192.168.1.100:3000"  // Replace with your IP
 ```
 
-### Supported OAuth2 Flows
-- ✅ **Authorization Code Flow** (with PKCE S256/plain)
-- ✅ **Implicit Flow** (response_type=token)
-- ✅ **Resource Owner Password Credentials Flow**
-- ✅ **Client Credentials Flow** 
-- ✅ **Refresh Token Flow**
-- ✅ **Device Authorization Grant** (RFC 8628)
-- ✅ **JWT Bearer Grant** (RFC 7523)
-- ✅ **OpenID Connect** (ID tokens, UserInfo, Discovery)
+### Android Development  
+```bash
+# Android Emulator automatically maps to host
+let baseURL = "http://10.0.2.2:3000"
 
-### Client Authentication Methods
-- ✅ **client_secret_basic** (Authorization header)
-- ✅ **client_secret_post** (form parameters)  
-- ✅ **private_key_jwt** (JWT assertion)
-- ✅ **none** (public clients)
-
-## Docker
+# For device testing, use your machine's IP
+let baseURL = "http://192.168.1.100:3000"  // Replace with your IP
 ```
-docker build -t oauth2-stubkit-mobile .
-docker run --rm -p 3000:3000 oauth2-stubkit-mobile
+
+### Hot Reload for Fast Iteration
+```bash
+# Start with hot reload enabled
+WATCH_RULES=1 npm run dev
+
+# Now modify any file in stubs/ - changes apply instantly!
 ```
-Mount keys to persist / reuse:
-```
-docker run --rm -p 3000:3000 -v $PWD/keys:/app/keys oauth2-stubkit-mobile
-```
-Generate & inspect a token quickly:
-```
-TOKEN=$(curl -s -X POST http://localhost:3000/oauth/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=client_credentials&client_id=svc&scope=basic' | jq -r .access_token)
-printf '%s\n' "$TOKEN" | cut -d'.' -f2 | base64 -D 2>/dev/null | jq
-```
-(Use `base64 -d` on Linux.)
 
-## Validate Rules
-```
-npm run validate:rules
-```
-Ensures every `rule*.json` has id, match + response.file exists.
+## 🛠️ Troubleshooting
 
-## Postman Collections
-Updated PKCE collection & environment live in `postman/`:
-- Collection: `OAuth2-StubKit-Mobile-PKCE.postman_collection.json`
-- Environment: `OAuth2-StubKit-Mobile-Local.postman_environment.json`
+| Issue | Solution |
+|-------|----------|
+| **404 Not Found** | Check rule matching (path, method, query params) |
+| **PKCE invalid_grant** | Verify code_verifier matches code_challenge |
+| **JWT signing error** | Regenerate RSA keys (see Technical Details) |
+| **CORS errors** | Enable CORS in config or adjust origins |
+| **Connection refused** | Check server is running on correct port |
 
-Environment variables map directly to values in `config/local.json` so you can change OAuth paths without editing the requests:
-- `base_url` -> `http://localhost:3000`
-- `oauth_authorize_path` -> `oauth.authorizePath`
-- `oauth_token_path` -> `oauth.tokenPath`
-- `oauth_jwks_path` -> `oauth.jwksPath`
-- `oauth_public_key_path` -> `oauth.publicKeyPath`
+## 🤝 Contributing
 
-Run flow steps in order (Reset -> Step 1 -> Step 2 -> Step 3 -> Step 5 -> Step 4 as needed). Auto-capture of `auth_code` via Location header is built in.
+We love contributions! This project is perfect for:
+- Adding new OAuth2 flows
+- Mobile-specific testing scenarios  
+- Additional stub rule examples
+- Documentation improvements
 
-## Contributing
-See `CONTRIBUTING.md` & `CODE_OF_CONDUCT.md`. PRs welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## Roadmap
-- Optional JWT auth middleware for protected stubs
-- Auth code expiry & cleanup job
-- Advanced templating helpers
-- OpenAPI generation from rules
+## 📄 License
 
-## Star & Share
-If this saved you time, please ⭐ the repo & share.
+MIT License - see [LICENSE](LICENSE) for details.
 
-## License
-MIT
+---
+
+**Made with ❤️ for mobile developers who want to focus on building great apps, not wrestling with authentication infrastructure.**
+
+> **StubForge Mobile** - Forge perfect API responses and OAuth2 flows for mobile development.

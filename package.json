@@ -1,7 +1,7 @@
 {
-  "name": "oauth2-stubkit-mobile",
+  "name": "stubforge-mobile",
   "version": "1.0.0",
-  "description": "Local OAuth2 Authorization Code + PKCE + JWT stub server with rule-based mock APIs for mobile development",
+  "description": "Configurable stub server with built-in OAuth2 for mobile development",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -12,8 +12,7 @@
   "keywords": [
     "stub-server",
     "mock",
-    "local",
-    "api",
+    "api-mocking",
     "configurable",
     "oauth2",
     "jwt",
@@ -22,7 +21,9 @@
     "ios",
     "android",
     "testing",
-    "developer-tools"
+    "developer-tools",
+    "stubforge",
+    "mobile-development"
   ],
   "license": "MIT",
   "dependencies": {
@@ -37,9 +38,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/aranga-nana/oauth2-stubkit-mobile.git"
+    "url": "https://github.com/aranga-nana/stubforge-mobile.git"
   },
-  "bugs": { "url": "https://github.com/aranga-nana/oauth2-stubkit-mobile/issues" },
-  "homepage": "https://github.com/aranga-nana/oauth2-stubkit-mobile#readme",
+  "bugs": { "url": "https://github.com/aranga-nana/stubforge-mobile/issues" },
+  "homepage": "https://github.com/aranga-nana/stubforge-mobile#readme",
   "engines": { "node": ">=18" }
 }

@@ -1,7 +1,10 @@
 # Changelog
 
+All notable changes to **StubForge Mobile** will be documented in this file.
+
 ## [Unreleased] - v1.2.0-dev (feature/comple-oauth-flow)
 ### Added - Complete OAuth2 & OpenID Connect Support
+- **Project Rebranding** - Renamed to "StubForge Mobile" to emphasize configurable stub server with built-in OAuth2
 - **Device Authorization Grant (RFC 8628)** - Device flow for smart TVs, IoT devices
 - **Implicit Flow** - Direct access token response for legacy web apps
 - **JWT Bearer Grant (RFC 7523)** - Service-to-service authentication with JWT assertions

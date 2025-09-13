@@ -1,4 +1,4 @@
-# Minimal Docker image for oauth2-stubkit-mobile
+# StubForge Mobile - Configurable stub server with built-in OAuth2 for mobile development
 FROM node:18-alpine
 
 WORKDIR /app

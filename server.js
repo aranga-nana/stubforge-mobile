@@ -434,14 +434,34 @@ app.get(DEVICE_VERIFICATION_PATH, (req, res) => {
   const html = `
     <!DOCTYPE html>
     <html>
-    <head><title>Device Authorization</title></head>
+    <head>
+      <title>StubForge Mobile - Device Authorization</title>
+      <style>
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; text-align: center; }
+        .logo { width: 80px; height: 80px; margin: 0 auto 20px; }
+        .form-group { margin: 15px 0; }
+        input[type="text"] { padding: 10px; width: 200px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .footer { margin-top: 30px; color: #666; font-size: 12px; }
+      </style>
+    </head>
     <body>
-      <h1>Device Authorization</h1>
+      <div class="logo">🔥</div>
+      <h1>StubForge Mobile</h1>
+      <h2>Device Authorization</h2>
       <p>Please enter the code displayed on your device:</p>
       <form method="post" action="${DEVICE_VERIFY_PATH}">
-        <input type="text" name="user_code" value="${userCode || ''}" placeholder="Enter code" required>
-        <button type="submit">Authorize</button>
+        <div class="form-group">
+          <input type="text" name="user_code" value="${userCode || ''}" placeholder="Enter device code" required>
+        </div>
+        <div class="form-group">
+          <button type="submit">Authorize Device</button>
+        </div>
       </form>
+      <div class="footer">
+        <p>StubForge Mobile - Configurable stub server with built-in OAuth2</p>
+      </div>
     </body>
     </html>
   `;
@@ -455,9 +475,53 @@ app.post(DEVICE_VERIFY_PATH, express.urlencoded({ extended: false }), (req, res)
   if (deviceEntry) {
     deviceEntry.verified = true;
     deviceEntry.approvedAt = Date.now();
-    res.send('<h1>Device Authorized Successfully!</h1><p>You can now close this window.</p>');
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>StubForge Mobile - Success</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; text-align: center; }
+          .logo { font-size: 60px; margin: 20px 0; }
+          .success { color: #28a745; }
+          .footer { margin-top: 30px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="logo">🔥</div>
+        <h1>StubForge Mobile</h1>
+        <h2 class="success">✅ Device Authorized Successfully!</h2>
+        <p>You can now close this window and return to your device.</p>
+        <div class="footer">
+          <p>StubForge Mobile - Configurable stub server with built-in OAuth2</p>
+        </div>
+      </body>
+      </html>
+    `);
   } else {
-    res.status(400).send('<h1>Invalid Code</h1><p>The code you entered is invalid or expired.</p>');
+    res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>StubForge Mobile - Error</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; text-align: center; }
+          .logo { font-size: 60px; margin: 20px 0; }
+          .error { color: #dc3545; }
+          .footer { margin-top: 30px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="logo">🔥</div>
+        <h1>StubForge Mobile</h1>
+        <h2 class="error">❌ Invalid Code</h2>
+        <p>The code you entered is invalid or expired.</p>
+        <div class="footer">
+          <p>StubForge Mobile - Configurable stub server with built-in OAuth2</p>
+        </div>
+      </body>
+      </html>
+    `);
   }
 });
 // OAuth2 token endpoint (form-urlencoded or JSON)
@@ -841,8 +905,12 @@ app.use(async (req, res, next) => {
   }
 });
 
-// Added explicit health endpoint for Postman PKCE Step 1
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+// Health endpoint
+app.get('/health', (req, res) => res.json({ 
+  status: 'ok', 
+  service: 'StubForge Mobile',
+  description: 'Configurable stub server with built-in OAuth2 for mobile development'
+}));
 
 app.use((req, res) => {
   const fb = config.fallback || { status: 404, json: { error: 'Not found' } };
@@ -851,12 +919,30 @@ app.use((req, res) => {
 
 const port = process.env.PORT || config.port || 3000;
 app.listen(port, () => {
-  console.log(`Stub server running on http://localhost:${port}`);
-  console.log(`Config: ${CONFIG_FILE}`);
-  console.log(`Stubs dir: ${config.stubsDir || 'stubs'}`);
-  console.log(`Rules loaded: ${rules.length}`);
+  console.log('\n');
+  console.log('  ███████╗████████╗██╗   ██╗██████╗ ███████╗ ██████╗ ██████╗  ██████╗ ███████╗');
+  console.log('  ██╔════╝╚══██╔══╝██║   ██║██╔══██╗██╔════╝██╔═══██╗██╔══██╗██╔════╝ ██╔════╝');
+  console.log('  ███████╗   ██║   ██║   ██║██████╔╝█████╗  ██║   ██║██████╔╝██║  ███╗█████╗  ');
+  console.log('  ╚════██║   ██║   ██║   ██║██╔══██╗██╔══╝  ██║   ██║██╔══██╗██║   ██║██╔══╝  ');
+  console.log('  ███████║   ██║   ╚██████╔╝██████╔╝██║     ╚██████╔╝██║  ██║╚██████╔╝███████╗');
+  console.log('  ╚══════╝   ╚═╝    ╚═════╝ ╚═════╝ ╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝');
+  console.log('                                                                               ');
+  console.log('  ███╗   ███╗ ██████╗ ██████╗ ██╗██╗     ███████╗                            ');
+  console.log('  ████╗ ████║██╔═══██╗██╔══██╗██║██║     ██╔════╝                            ');
+  console.log('  ██╔████╔██║██║   ██║██████╔╝██║██║     █████╗                              ');
+  console.log('  ██║╚██╔╝██║██║   ██║██╔══██╗██║██║     ██╔══╝                              ');
+  console.log('  ██║ ╚═╝ ██║╚██████╔╝██████╔╝██║███████╗███████╗                            ');
+  console.log('  ╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚═╝╚══════╝╚══════╝                            ');
+  console.log('\n');
+  console.log('  🔥 Configurable stub server with built-in OAuth2 for mobile development');
+  console.log('  ⚡ Forge perfect API responses and OAuth2 flows in minutes, not days!');
+  console.log('\n');
+  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`📁 Config: ${CONFIG_FILE}`);
+  console.log(`📂 Stubs dir: ${config.stubsDir || 'stubs'}`);
+  console.log(`📋 Rules loaded: ${rules.length}`);
   console.log('');
-  console.log('OAuth2 & OpenID Connect Endpoints:');
+  console.log('🔐 OAuth2 & OpenID Connect Endpoints:');
   console.log(`  Authorization: ${OAUTH_AUTHORIZE_PATH}`);
   console.log(`  Token: ${OAUTH_TOKEN_PATH}`);
   console.log(`  Device Authorization: ${OAUTH_DEVICE_PATH}`);
@@ -871,7 +957,7 @@ app.listen(port, () => {
   console.log('');
   console.log('💡 All endpoint paths are configurable in config/local.json');
   console.log('');
-  console.log('Supported OAuth2 Flows:');
+  console.log('🚀 Supported OAuth2 Flows:');
   console.log('  ✓ Authorization Code Flow (with PKCE)');
   console.log('  ✓ Implicit Flow');
   console.log('  ✓ Resource Owner Password Credentials Flow');
@@ -881,9 +967,14 @@ app.listen(port, () => {
   console.log('  ✓ JWT Bearer Grant (RFC 7523)');
   console.log('  ✓ OpenID Connect (ID tokens, UserInfo, Discovery)');
   console.log('');
-  console.log('Client Authentication Methods:');
+  console.log('🔑 Client Authentication Methods:');
   console.log('  ✓ client_secret_basic (Authorization header)');
   console.log('  ✓ client_secret_post (form parameters)');
   console.log('  ✓ private_key_jwt (JWT assertion)');
   console.log('  ✓ none (public clients)');
+  console.log('');
+  console.log('═══════════════════════════════════════════════════════════════════════════════');
+  console.log('🔥 StubForge Mobile - Ready to forge amazing mobile experiences! 🚀');
+  console.log('═══════════════════════════════════════════════════════════════════════════════');
+  console.log('');
 });
