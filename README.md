@@ -1,8 +1,20 @@
-# Mobile OAuth2 Stub Server (PKCE) for iOS / Android App Development
+# oauth2-stubkit-mobile
 
 ![PKCE Mobile Ready](https://img.shields.io/badge/Mobile%20OAuth2-PKCE%20Ready-brightgreen?style=for-the-badge) ![JWT](https://img.shields.io/badge/Tokens-JWT%20RS256-blue?style=for-the-badge) ![Stubs](https://img.shields.io/badge/Config-Stub%20Rules-lightgrey?style=for-the-badge)
 
-Spin up a local configurable OAuth2 Authorization Code (PKCE) + JWT stub API in under 60 seconds for rapid mobile (iOS & Android) development.
+Spin up a local, config-driven OAuth2 Authorization Code (PKCE) + JWT stub API in under 60 seconds for rapid iOS & Android mobile app development. NOT for production; purpose-built for local dev, integration testing, and iterative UI flows.
+
+Key features:
+- Authorization Code + PKCE (S256) plus password, client_credentials & refresh grants
+- RS256-signed JWT access & refresh tokens with JWKS (`/.well-known/jwks.json`)
+- Configurable stub rule folders (method/path/query/body matching, templating, delays)
+- Query + body variant examples included (products, orders)
+- Hot reload of rules (set `WATCH_RULES=1`)
+- Postman collection automates full PKCE flow (auto-captures auth code, integrity checks)
+- Safe key handling (git-ignored PEMs; instructions included)
+- Minimal dependencies; fast startup
+
+## Mobile OAuth2 Stub Server (PKCE) for iOS / Android App Development
 
 Purpose: Fast local HTTP stub + OAuth2 (Authorization Code + PKCE, password, client_credentials, refresh) with signed JWTs.
 
