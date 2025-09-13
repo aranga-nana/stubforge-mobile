@@ -230,8 +230,12 @@ function authenticateClient(req) {
     return { clientId, authenticated: true, method: 'none' };
   }
   
-  // For stub server: default to a generic client if no auth provided
-  return { clientId: 'default-client', authenticated: true, method: 'none' };
+  // For stub server: optionally allow default client if explicitly configured
+  if (config.allowDefaultClient === true) {
+    return { clientId: 'default-client', authenticated: true, method: 'none' };
+  }
+  
+  return { error: 'invalid_client', error_description: 'No client authentication provided' };
 }
 
 // Added: helper token signing functions (were previously referenced but undefined)

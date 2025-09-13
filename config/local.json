@@ -2,6 +2,7 @@
   "port": 3000,
   "logging": true,
   "globalDelayMs": 0,
+  "allowDefaultClient": false,
   "cors": {
     "enabled": true,
     "origins": ["*"]

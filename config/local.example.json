@@ -2,6 +2,7 @@
   "port": 3000,
   "logging": true,
   "globalDelayMs": 0,
+  "allowDefaultClient": false,
   "cors": {
     "enabled": true,
     "origins": ["*"]
@@ -22,6 +23,7 @@
     "deviceVerifyPath": "/device/verify"
   },
   "_comments": {
+    "allowDefaultClient": "Set to true to allow fallback to 'default-client' when no authentication is provided. False by default for better testing security.",
     "oauth": "All OAuth2 endpoint paths are customizable",
     "examples": {
       "basePath": "Change to '/auth' for different base path",
