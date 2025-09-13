@@ -4,7 +4,7 @@
   <img src="docs/assets/stub-forge-mobile.png" alt="StubForge Mobile Logo" width="200" height="200">
 </div>
 
-![Mobile Development](https://img.shields.io/badge/Mobile%20Development-Made%20Easy-brightgreen?style=for-the-badge) ![Configurable Stubs](https://img.shields.io/badge/Stubs-Configurable-blue?style=for-the-badge) ![OAuth2 Built-in](https://img.shields.io/badge/OAuth2-Built--in-lightgrey?style=for-the-badge) ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-green?style=for-the-badge)
+![Mobile Development](https://img.shields.io/badge/Mobile%20Development-Made%20Easy-brightgreen?style=for-the-badge) ![Configurable Stubs](https://img.shields.io/badge/Stubs-Configurable-blue?style=for-the-badge) ![OAuth2 Built-in](https://img.shields.io/badge/OAuth2-Built--in-lightgrey?style=for-the-badge) ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-green?style=for-the-badge) [![Docker Pulls](https://img.shields.io/docker/pulls/aranga/stubforge-mobile?style=for-the-badge)](https://hub.docker.com/r/aranga/stubforge-mobile) [![Image Size](https://img.shields.io/docker/image-size/aranga/stubforge-mobile/latest?style=for-the-badge&label=Image%20Size)](https://hub.docker.com/r/aranga/stubforge-mobile)
 
 **Configurable stub server with built-in OAuth2 for mobile development.** Forge perfect API responses and OAuth2 flows for your iOS & Android apps in minutes, not days.
 
@@ -186,12 +186,21 @@ Beyond OAuth2, create realistic API responses for your mobile app:
 Perfect for CI/CD and team development:
 
 ```bash
-# Build and run with Docker
-docker build -t oauth2-stubkit-mobile .
-docker run --rm -p 3000:3000 oauth2-stubkit-mobile
+# Pull official image
+docker pull aranga/stubforge-mobile:latest
+
+# Run with latest tag
+docker run --rm -p 3000:3000 aranga/stubforge-mobile:latest
+
+# Run specific version
+docker run --rm -p 3000:3000 aranga/stubforge-mobile:1.3.0
 
 # With persistent keys
-docker run --rm -p 3000:3000 -v "$PWD/keys:/app/keys" oauth2-stubkit-mobile
+docker run --rm -p 3000:3000 -v "$PWD/keys:/app/keys" aranga/stubforge-mobile:latest
+
+# Build your own (local dev)
+docker build -t aranga/stubforge-mobile:dev .
+docker run --rm -p 3000:3000 aranga/stubforge-mobile:dev
 ```
 
 ## 📚 Technical Details

@@ -16,8 +16,3 @@ coverage
 *.tmp
 *.temp
 # Local configs (don't bake local overrides into image)
-config/local.json
-config/local.*.json
-# Mount these at runtime instead of copying local working copies
-stubs/
-keys/

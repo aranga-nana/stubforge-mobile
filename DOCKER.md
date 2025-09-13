@@ -9,7 +9,7 @@ This guide explains how to run StubForge Mobile in Docker with custom stubs and 
 Run with built-in samples - perfect for getting started:
 
 ```bash
-docker run -p 3000:3000 stubforge/mobile:latest
+docker run -p 3000:3000 aranga/stubforge-mobile:latest
 ```
 
 ## Custom Stubs and Keys
@@ -46,7 +46,7 @@ Mount your custom directories:
 docker run -p 3000:3000 \
   -v ./my-stubforge-data/stubs:/app/stubs \
   -v ./my-stubforge-data/keys:/app/keys \
-  stubforge/mobile:latest
+  aranga/stubforge-mobile:latest
 ```
 
 ### Persistent Data with Docker Compose
@@ -57,7 +57,7 @@ Create a `docker-compose.yml`:
 version: '3.8'
 services:
   stubforge:
-    image: stubforge/mobile:latest
+  image: aranga/stubforge-mobile:latest
     ports:
       - "3000:3000"
     volumes:
@@ -93,14 +93,14 @@ docker-compose up -d
 
 ### 1. Development with Built-in Samples
 ```bash
-docker run -p 3000:3000 stubforge/mobile:latest
+docker run -p 3000:3000 aranga/stubforge-mobile:latest
 ```
 
 ### 2. Custom Stubs, Default Keys
 ```bash
 docker run -p 3000:3000 \
   -v ./my-stubs:/app/stubs \
-  stubforge/mobile:latest
+  aranga/stubforge-mobile:latest
 ```
 
 ### 3. Production-like with Custom Everything
@@ -109,7 +109,7 @@ docker run -p 3000:3000 \
   -v ./production-stubs:/app/stubs \
   -v ./production-keys:/app/keys \
   -v ./production-config:/app/config \
-  stubforge/mobile:latest
+  aranga/stubforge-mobile:latest
 ```
 
 ### 4. Individual API Endpoints
@@ -118,15 +118,15 @@ docker run -p 3000:3000 \
 docker run -p 3000:3000 \
   -v ./my-auth-stubs:/app/stubs/auth \
   -v ./my-product-stubs:/app/stubs/products \
-  stubforge/mobile:latest
+  aranga/stubforge-mobile:latest
 ```
 
 ## Building and Pushing to Docker Hub
 
 ### Build Image
 ```bash
-docker build -t stubforge/mobile:latest .
-docker build -t stubforge/mobile:1.3.0 .
+docker build -t aranga/stubforge-mobile:latest .
+docker build -t aranga/stubforge-mobile:1.3.0 .
 ```
 
 ### Push to Docker Hub
@@ -135,10 +135,10 @@ docker build -t stubforge/mobile:1.3.0 .
 docker login
 
 # Push latest
-docker push stubforge/mobile:latest
+docker push aranga/stubforge-mobile:latest
 
 # Push versioned
-docker push stubforge/mobile:1.3.0
+docker push aranga/stubforge-mobile:1.3.0
 ```
 
 ### Multi-platform Build (Optional)
@@ -148,8 +148,8 @@ docker buildx create --use
 
 # Build for multiple platforms
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t stubforge/mobile:latest \
-  -t stubforge/mobile:1.3.0 \
+  -t aranga/stubforge-mobile:latest \
+  -t aranga/stubforge-mobile:1.3.0 \
   --push .
 ```
 
@@ -171,7 +171,7 @@ openssl rsa -in private.pem -pubout -out public.pem
 ```bash
 docker run -p 3000:3000 \
   -v ./secure-keys:/app/keys \
-  stubforge/mobile:latest
+  aranga/stubforge-mobile:latest
 ```
 
 ### Production Deployment
@@ -207,7 +207,7 @@ docker run -p 3000:3000 \
 ### Custom Entrypoint
 Override the entrypoint for debugging:
 ```bash
-docker run -it --entrypoint /bin/sh stubforge/mobile:latest
+docker run -it --entrypoint /bin/sh aranga/stubforge-mobile:latest
 ```
 
 ### Environment Variables
@@ -215,7 +215,7 @@ docker run -it --entrypoint /bin/sh stubforge/mobile:latest
 docker run -p 3000:3000 \
   -e PORT=8080 \
   -e NODE_ENV=production \
-  stubforge/mobile:latest
+  aranga/stubforge-mobile:latest
 ```
 
 ### Health Checks
@@ -223,7 +223,7 @@ Add health check to docker-compose.yml:
 ```yaml
 services:
   stubforge:
-    image: stubforge/mobile:latest
+  image: aranga/stubforge-mobile:latest
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/.well-known/openid_configuration"]
       interval: 30s
