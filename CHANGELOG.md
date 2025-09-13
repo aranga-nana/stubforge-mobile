@@ -2,6 +2,19 @@
 
 All notable changes to **StubForge Mobile** will be documented in this file.
 
+## [1.3.1] - 2025-09-13 - Docker Namespace & Badges
+### Changed
+- **Docker Image Namespace**: Updated all documentation and examples from `stubforge/mobile` to `aranga/stubforge-mobile` (official Docker Hub repository)
+- **Docker Usage Examples**: Added explicit versioned (`1.3.0`) and `latest` pull/run examples in README and Docker guide
+
+### Added
+- **Docker Hub Badges**: README now includes Docker Pulls and Image Size shields
+
+### Notes
+- No runtime code changes; patch release strictly for documentation and distribution namespace alignment
+- Next version with functional changes will increment minor or patch as appropriate
+
+
 ## [1.3.0] - 2025-09-13 - Docker Hub & Volume Support
 ### Added - Docker Volume Support & Hub Deployment
 - **Docker Volume Support** - External mounting for custom stubs and keys without rebuilding images
